@@ -262,7 +262,7 @@ Right (5) → Down (3) → Left (2) → Up (1) → Right (4) ...
 ## Files
 
 - [DwarfMazeGame.html](DwarfMazeGame.html): Single-page app (1614 lines: HTML + CSS + JavaScript)
-- [FUNCTION_ANALYSIS.md](FUNCTION_ANALYSIS.md): Complete technical documentation with:
+- [FUNCTION_INTRODUCTION.md](FUNCTION_INTRODUCTION.md): Complete technical documentation with:
   - 30 function descriptions with purpose, parameters, and call chains
   - 8 workflow diagrams (initialization, movement, bot algorithms, etc.)
   - Data structure specifications
@@ -277,7 +277,7 @@ Right (5) → Down (3) → Left (2) → Up (1) → Right (4) ...
 ```
 DwarfMaze/
 ├── DwarfMazeGame.html       # Main application (self-contained)
-├── FUNCTION_ANALYSIS.md     # Technical documentation
+├── FUNCTION_INTRODUCTION.md # Technical documentation
 ├── README.md                # This file
 ├── requirements.txt         # Python deps (empty)
 ├── .gitignore              # Git exclusions
