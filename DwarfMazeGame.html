@@ -1,0 +1,1614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>The Dwarf's Maze</title>
+    <style type="text/css">
+        /* FIX: Global box-sizing to prevent padding/border from causing overlaps */
+        * { box-sizing: border-box; }
+
+        body {
+            background-color: #1a1a2e;
+            color: #ecf0f1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 10px;
+            min-height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            touch-action: pan-y;
+        }
+        
+        h1 {
+            font-size: 1.5rem;
+            margin: 0 0 10px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            color: #e67e22;
+        }
+
+        .stats-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+            color: #bdc3c7;
+            background: rgba(0,0,0,0.3);
+            padding: 5px 15px;
+            border-radius: 20px;
+            border: 1px solid #34495e;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .stat-value { color: #e74c3c; font-weight: bold; }
+
+        .mode-select {
+            background-color: #34495e;
+            color: white;
+            border: 1px solid #7f8c8d;
+            border-radius: 5px;
+            padding: 5px;
+            font-family: inherit;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+
+        .checkbox-label {
+            margin-left: 10px;
+            font-size: 0.9rem;
+            color: #bdc3c7;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            user-select: none;
+        }
+        .checkbox-label input { margin-right: 5px; cursor: pointer; }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            margin-left: 10px;
+            gap: 2px;
+        }
+        .checkbox-group .checkbox-label { margin-left: 0; font-size: 0.85rem; }
+
+        /* --- LAYOUT STRUCTURE --- */
+        #game-layout {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            max-width: 1400px;
+        }
+
+        /* Maps Row */
+        #maps-row {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 5px;
+            width: 100%;
+        }
+
+        /* Controls & Logic Row */
+        #controls-logic-row {
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
+            width: 100%;
+            align-items: flex-start;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* --- Canvas & Wrappers --- */
+        .canvas-wrapper {
+            flex: 1; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 300px;
+        }
+
+        .map-label {
+            margin-top: 5px;
+            font-size: 0.9rem;
+            color: #95a5a6;
+        }
+
+        #game-container, #trace-container {
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.6);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 4px solid #34495e;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+
+        #trace-container { background-color: #000; }
+        canvas { display: block; background-color: #2c3e50; max-width: 100%; }
+
+        /* Message Overlay */
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+            border: 2px solid #e67e22;
+            pointer-events: auto; 
+            width: 80%;
+            z-index: 10;
+        }
+        #message h2 { margin: 0; color: #f1c40f; }
+        #message p { margin: 5px 0 0 0; color: #fff; font-size: 0.9rem;}
+
+        #restartBtn {
+            margin-top: 15px;
+            padding: 8px 16px;
+            font-size: 1rem;
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        #restartBtn:hover { background-color: #2ecc71; }
+
+        /* --- Controls Section --- */
+        .control-panel-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-width: 140px;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 45px 45px 45px;
+            grid-template-rows: 45px 45px;
+            gap: 4px;
+            align-items: center;
+            justify-items: center;
+        }
+
+        .btn {
+            width: 42px;
+            height: 42px;
+            background-color: #34495e;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 3px 0 #2c3e50;
+            transition: transform 0.1s, box-shadow 0.1s;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn:active { transform: translateY(3px); box-shadow: 0 0 0 #2c3e50; background-color: #e67e22; }
+
+        .up { grid-column: 2; grid-row: 1; }
+        .left { grid-column: 1; grid-row: 2; }
+        .down { grid-column: 2; grid-row: 2; }
+        .right { grid-column: 3; grid-row: 2; }
+
+        .instructions {
+            margin-top: 10px;
+            font-size: 0.8rem;
+            color: #95a5a6;
+            text-align: center;
+        }
+
+        /* --- Info Stack (Logic + History) --- */
+        .info-stack {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-width: 300px;
+        }
+
+        /* Bot Logic Section */
+        #bot-logic-section {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #9b59b6;
+            border-radius: 10px;
+            padding: 10px;
+            color: #ecf0f1;
+            display: flex;
+            flex-direction: column;
+            height: 140px; 
+        }
+
+        #bot-logic-header {
+            font-size: 0.9rem;
+            color: #9b59b6;
+            font-weight: bold;
+            border-bottom: 1px solid #9b59b6;
+            margin-bottom: 5px;
+            padding-bottom: 3px;
+        }
+
+        #bot-logic-content {
+            flex: 1;
+            overflow-y: auto;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.8rem;
+            white-space: pre-wrap;
+        }
+
+        .log-entry { margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 2px; }
+        .log-highlight { color: #f1c40f; }
+        .log-action { color: #2ecc71; }
+        .log-warn { color: #e74c3c; }
+
+        /* Container for History and Details side-by-side */
+        .history-details-row {
+            display: flex;
+            flex-direction: row;
+            gap: 10px;
+            width: 100%;
+        }
+
+        #history-section, #game-details-section {
+            flex: 1;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid #34495e;
+            border-radius: 10px;
+            padding: 10px;
+            color: #ecf0f1;
+            min-width: 0;
+        }
+        
+        #game-details-section { min-height: 150px; }
+
+        #history-header, #details-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #7f8c8d;
+            padding-bottom: 5px;
+            white-space: nowrap; 
+        }
+
+        #history-list {
+            max-height: 150px;
+            overflow-y: auto;
+            font-size: 0.9rem;
+        }
+
+        #details-content {
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            max-height: 150px;
+            overflow-y: auto;
+            color: #ecf0f1;
+        }
+
+        .history-item {
+            padding: 5px;
+            cursor: pointer;
+            border-bottom: 1px solid #2c3e50;
+            display: flex;
+            justify-content: space-between;
+        }
+        .history-item:hover { background-color: #34495e; }
+        .history-item.selected { background-color: #2980b9; color: white; }
+
+        .history-controls { display: flex; gap: 5px; }
+
+        #saveLogBtn, #clearLogBtn {
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 10px;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+        #saveLogBtn { background-color: #2980b9; }
+        #saveLogBtn:hover { background-color: #3498db; }
+        #clearLogBtn { background-color: #c0392b; }
+        #clearLogBtn:hover { background-color: #e74c3c; }
+
+        @media (max-width: 950px) {
+            #controls-logic-row {
+                flex-direction: column;
+                align-items: center;
+            }
+            .info-stack {
+                width: 100%;
+            }
+            .history-details-row {
+                flex-direction: column; 
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>The Dwarf's Escape</h1>
+
+    <div class="stats-container">
+        <div>Steps: <span id="scoreDisplay" class="stat-value">0</span></div>
+        <select id="modeSelect" class="mode-select">
+            <option value="human">Human Control</option>
+            <option value="bot">Bot Control</option>
+        </select>
+        
+        <select id="botAlgoSelect" class="mode-select" style="display:none;">
+            <option value="separator" selected>----</option>
+            <option value="dfs">Blind Deep First Search</option>
+            <option value="bfs">Blind Wide First Search</option>
+            <option value="wall_left">Left Wall Follower</option>
+            <option value="wall_right">Right Wall Follower</option>
+            <option value="random">Random Mouse</option>
+        </select>
+
+        <select id="mapTypeSelect" class="mode-select">
+            <option value="deadends">Dead Ends Allowed</option>
+            <option value="no_deadends">Dead Ends Not Allowed</option>
+        </select>
+
+        <button id="pauseBtn" class="mode-select">Pause</button>
+        <button id="newMapBtn" class="mode-select">New Map</button>
+        
+        <div class="checkbox-group">
+            <label class="checkbox-label">
+                <input type="checkbox" id="autoRestartCheck" checked> Auto Restart
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" id="newMapCheck" checked> New Map Gen Auto
+            </label>
+        </div>
+    </div>
+
+    <!-- MAIN LAYOUT -->
+    <div id="game-layout">
+        
+        <!-- Row 1: Maps -->
+        <div id="maps-row">
+            <div class="canvas-wrapper">
+                <div id="game-container">
+                    <canvas id="gameCanvas"></canvas>
+                    <div id="message">
+                        <h2>ESCAPED!</h2>
+                        <p id="winText">Generating new maze...</p>
+                        <button id="restartBtn" style="display:none;">Play Again</button>
+                    </div>
+                </div>
+                <div class="map-label">Live View</div>
+            </div>
+
+            <div class="canvas-wrapper">
+                <div id="trace-container">
+                    <canvas id="traceCanvas"></canvas>
+                </div>
+                <div class="map-label">Frequency Heat Map</div>
+            </div>
+        </div>
+
+        <!-- Row 2: Controls + Info Stack -->
+        <div id="controls-logic-row">
+            <!-- Controls Panel (Left) -->
+            <div class="control-panel-wrapper">
+                <div class="controls">
+                    <button class="btn up" id="btnUp">▲</button>
+                    <button class="btn left" id="btnLeft">◀</button>
+                    <button class="btn down" id="btnDown">▼</button>
+                    <button class="btn right" id="btnRight">▶</button>
+                </div>
+                <p class="instructions">Use Arrow Keys or Buttons</p>
+                <select id="speedSelect" class="mode-select" style="margin-left: 0; margin-top: 5px; font-size: 0.85rem; width: 100%;">
+                    <option value="50">Fast (50ms)</option>
+                    <option value="150" selected>Normal (150ms)</option>
+                    <option value="300">Slow (300ms)</option>
+                    <option value="600">Very Slow (600ms)</option>
+                </select>
+            </div>
+
+            <!-- Info Stack (Logic, History, Details) -->
+            <div class="info-stack">
+                <!-- Bot Logic Window -->
+                <div id="bot-logic-section">
+                    <div id="bot-logic-header">Bot Decision Logic</div>
+                    <div id="bot-logic-content">
+                        <div class="log-entry" style="color:#7f8c8d;">Waiting for bot start...</div>
+                    </div>
+                </div>
+
+                <!-- History & Details Row -->
+                <div class="history-details-row">
+                    <div id="history-section">
+                        <div id="history-header">
+                            <strong>Route History</strong>
+                            <div class="history-controls">
+                                <button id="saveLogBtn">Save</button>
+                                <button id="clearLogBtn">Clear</button>
+                            </div>
+                        </div>
+                        <div id="history-list">
+                            <div style="padding:5px; color:#7f8c8d;">No games completed yet.</div>
+                        </div>
+                    </div>
+                    
+                    <div id="game-details-section">
+                        <div id="details-header">
+                            <strong>Selected Game Details</strong>
+                        </div>
+                        <div id="details-content">
+                            <span style="color:#7f8c8d;">Select a game from history to view details.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script type="text/javascript">
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const traceCanvas = document.getElementById('traceCanvas');
+    const traceCtx = traceCanvas.getContext('2d');
+    
+    const messageEl = document.getElementById('message');
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    const modeSelect = document.getElementById('modeSelect');
+    const botAlgoSelect = document.getElementById('botAlgoSelect');
+    const mapTypeSelect = document.getElementById('mapTypeSelect');
+    const speedSelect = document.getElementById('speedSelect'); 
+    const pauseBtn = document.getElementById('pauseBtn');
+    const newMapBtn = document.getElementById('newMapBtn');
+    
+    const autoRestartCheck = document.getElementById('autoRestartCheck');
+    const newMapCheck = document.getElementById('newMapCheck');
+    const restartBtn = document.getElementById('restartBtn');
+    const winText = document.getElementById('winText');
+
+    const historyList = document.getElementById('history-list');
+    const saveLogBtn = document.getElementById('saveLogBtn');
+    const clearLogBtn = document.getElementById('clearLogBtn');
+    const detailsContent = document.getElementById('details-content');
+    const botLogContent = document.getElementById('bot-logic-content');
+
+    // Configuration
+    let COLS = 15; 
+    let ROWS = 15;
+    let TILE_SIZE = 20;
+
+    let maze = [];
+    let player = { x: 0, y: 1, facing: 'right' }; 
+    let exit = null; 
+    let isFrozen = false; 
+    let isPaused = false; 
+    
+    let returnCount = 0;
+    let pathStack = []; 
+    let fullTrace = []; 
+    
+    // History
+    let gameHistory = [];
+    let viewingHistoryIdx = -1; 
+
+    // Bot memory
+    let botVisited = new Set();
+    
+    let gameMode = 'human'; 
+    let botInterval = null;
+    let winTimeout = null;
+
+    // --- Drag & Drop State ---
+    let isDraggingExit = false;
+    let dragPos = { x: 0, y: 0 };
+
+    // --- Helper for Bot Logging ---
+    function logBotDecision(msg, type='normal') {
+        const div = document.createElement('div');
+        div.className = 'log-entry';
+        
+        // Add timestamp
+        const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' });
+        
+        let html = `<span style="color:#7f8c8d;">[${time}]</span> `;
+        
+        if (type === 'action') html += `<span class="log-action">${msg}</span>`;
+        else if (type === 'highlight') html += `<span class="log-highlight">${msg}</span>`;
+        else if (type === 'warn') html += `<span class="log-warn">${msg}</span>`;
+        else html += msg;
+
+        div.innerHTML = html;
+        botLogContent.appendChild(div);
+        botLogContent.scrollTop = botLogContent.scrollHeight;
+        
+        // Limit log size
+        if (botLogContent.childElementCount > 50) {
+            botLogContent.removeChild(botLogContent.firstChild);
+        }
+    }
+
+    function initDimensions() {
+        const padding = 40;
+        let availableWidth = window.innerWidth - padding;
+        
+        if (availableWidth > 800) {
+            availableWidth = availableWidth / 2.05; 
+        } else {
+             availableWidth = Math.min(availableWidth, 500); 
+        }
+
+        COLS = 19;
+        ROWS = 19;
+        
+        TILE_SIZE = Math.floor(availableWidth / COLS);
+        
+        canvas.width = COLS * TILE_SIZE;
+        canvas.height = ROWS * TILE_SIZE;
+        traceCanvas.width = COLS * TILE_SIZE;
+        traceCanvas.height = ROWS * TILE_SIZE;
+        
+        // Default Exit position if not defined
+        if(!exit || exit.x >= COLS || exit.y >= ROWS) {
+            exit = { x: COLS - 1, y: ROWS - 2 };
+        }
+    }
+
+    // --- Maze Generation ---
+    function resetLevelState() {
+        if (winTimeout) clearTimeout(winTimeout);
+        winTimeout = null;
+
+        player.x = 0;
+        player.y = 1;
+        player.facing = 'right';
+        
+        returnCount = 0;
+        pathStack = [{x: 0, y: 1}];
+        fullTrace = [{x: 0, y: 1}]; 
+        botVisited.clear(); 
+        botVisited.add('0,1');
+        
+        scoreDisplay.textContent = 0;
+
+        isFrozen = false;
+        isPaused = false;
+        viewingHistoryIdx = -1; 
+        updateHistorySelection();
+        
+        // Reset details view
+        detailsContent.innerHTML = '<span style="color:#7f8c8d;">Select a game from history to view details.</span>';
+        botLogContent.innerHTML = '<div class="log-entry" style="color:#7f8c8d;">New Game Started</div>';
+
+        if (pauseBtn) pauseBtn.textContent = "Pause";
+        messageEl.style.display = 'none';
+        
+        // Check mode on reset
+        if (gameMode === 'bot') {
+            if (botAlgoSelect.value === 'separator') {
+                isPaused = true;
+                stopBot();
+            } else {
+                startBot();
+            }
+        }
+
+        draw();
+    }
+
+    function generateMaze() {
+        if (winTimeout) clearTimeout(winTimeout);
+        winTimeout = null;
+
+        maze = [];
+        for (let r = 0; r < ROWS; r++) {
+            let row = [];
+            for (let c = 0; c < COLS; c++) {
+                row.push(1);
+            }
+            maze.push(row);
+        }
+
+        const dirs = [
+            { r: -2, c: 0 }, { r: 2, c: 0 }, 
+            { r: 0, c: -2 }, { r: 0, c: 2 }
+        ];
+
+        function carve(r, c) {
+            maze[r][c] = 0;
+            const shuffledDirs = dirs.sort(() => Math.random() - 0.5);
+
+            for (let d of shuffledDirs) {
+                const nr = r + d.r;
+                const nc = c + d.c;
+
+                if (nr > 0 && nr < ROWS && nc > 0 && nc < COLS && maze[nr][nc] === 1) {
+                    maze[r + d.r / 2][c + d.c / 2] = 0;
+                    carve(nr, nc);
+                }
+            }
+        }
+
+        carve(1, 1);
+        
+        // --- POST-PROCESSING: Remove Dead Ends if requested ---
+        if (mapTypeSelect.value === 'no_deadends') {
+            const deadEnds = [];
+            for (let r = 1; r < ROWS - 1; r++) {
+                for (let c = 1; c < COLS - 1; c++) {
+                    if (maze[r][c] === 0) {
+                        const neighbors = [
+                            {r:r-1, c:c}, {r:r+1, c:c}, {r:r, c:c-1}, {r:r, c:c+1}
+                        ];
+                        const walls = neighbors.filter(n => maze[n.r][n.c] === 1);
+                        if (walls.length === 3) {
+                            deadEnds.push({r, c, walls});
+                        }
+                    }
+                }
+            }
+            deadEnds.forEach(pt => {
+                const validWalls = pt.walls.filter(w => w.r > 0 && w.r < ROWS-1 && w.c > 0 && w.c < COLS-1);
+                if (validWalls.length > 0) {
+                    const wall = validWalls[Math.floor(Math.random() * validWalls.length)];
+                    maze[wall.r][wall.c] = 0;
+                }
+            });
+        }
+
+        // GUARANTEE PATHS:
+        maze[1][0] = 0; 
+        maze[1][1] = 0; 
+
+        // 2. Force Open Exit (Anywhere Logic)
+        if (exit.y < ROWS && exit.x < COLS) {
+            maze[exit.y][exit.x] = 0; // Ensure exit itself is open
+
+            // Connect Exit to the maze
+            let currX = exit.x;
+            let currY = exit.y;
+            let connected = false;
+            let safety = 0;
+
+            while (!connected && safety < 100) {
+                safety++;
+                const neighbors = [
+                    {x: currX, y: currY - 1}, {x: currX, y: currY + 1},
+                    {x: currX - 1, y: currY}, {x: currX + 1, y: currY}
+                ];
+                for (let n of neighbors) {
+                    if (n.x >= 0 && n.x < COLS && n.y >= 0 && n.y < ROWS) {
+                        if (maze[n.y][n.x] === 0) {
+                            connected = true; 
+                            break;
+                        }
+                    }
+                }
+                if (!connected) {
+                    let validNeighbors = neighbors.filter(n => n.x > 0 && n.x < COLS-1 && n.y > 0 && n.y < ROWS-1);
+                    if (validNeighbors.length === 0) break;
+                    const next = validNeighbors[Math.floor(Math.random() * validNeighbors.length)];
+                    maze[next.y][next.x] = 0; 
+                    currX = next.x;
+                    currY = next.y;
+                }
+            }
+        }
+        
+        // 3. ENFORCE WALL THICKNESS
+        for (let r = 0; r < ROWS - 1; r++) {
+            for (let c = 0; c < COLS - 1; c++) {
+                if (maze[r][c] === 1 && maze[r+1][c] === 1 && 
+                    maze[r][c+1] === 1 && maze[r+1][c+1] === 1) {
+                    
+                    let candidates = [];
+                    const cells = [
+                        {r:r, c:c}, {r:r+1, c:c}, {r:r, c:c+1}, {r:r+1, c:c+1}
+                    ];
+                    
+                    for(let cell of cells) {
+                        if (cell.r > 0 && cell.r < ROWS - 1 && cell.c > 0 && cell.c < COLS - 1) {
+                            let hasPathNeighbor = false;
+                            const neighbors = [
+                                {r: cell.r-1, c: cell.c}, {r: cell.r+1, c: cell.c},
+                                {r: cell.r, c: cell.c-1}, {r: cell.r, c: cell.c+1}
+                            ];
+                            for(let n of neighbors) {
+                                if (maze[n.r][n.c] === 0) {
+                                    hasPathNeighbor = true;
+                                    break;
+                                }
+                            }
+                            if (hasPathNeighbor) candidates.push(cell);
+                        }
+                    }
+                    if (candidates.length > 0) {
+                        const p = candidates[Math.floor(Math.random() * candidates.length)];
+                        maze[p.r][p.c] = 0;
+                    }
+                }
+            }
+        }
+
+        resetLevelState();
+    }
+
+    // --- Input Handling ---
+    function move(dx, dy) {
+        if (isFrozen || isPaused) return;
+
+        // 1. Update facing direction (Visual Feedback)
+        if (dx > 0) player.facing = 'right';
+        if (dx < 0) player.facing = 'left';
+        if (dy > 0) player.facing = 'down';
+        if (dy < 0) player.facing = 'up';
+
+        const newX = player.x + dx;
+        const newY = player.y + dy;
+
+        // 2. Check Validity
+        let canMove = true;
+
+        // Boundary Check: Prevent moving off-grid
+        if (newX < 0 || newX >= COLS || newY < 0 || newY >= ROWS) {
+            canMove = false;
+        }
+        // Wall Check: Prevent moving into walls
+        else if (maze[newY][newX] === 1) {
+            canMove = false;
+        }
+
+        // 3. Execute Move if valid
+        if (canMove) {
+            const previousPos = pathStack[pathStack.length - 2];
+
+            fullTrace.push({x: newX, y: newY});
+            
+            scoreDisplay.textContent = fullTrace.length - 1;
+
+            if (previousPos && previousPos.x === newX && previousPos.y === newY) {
+                returnCount++;
+                pathStack.pop(); 
+            } else {
+                pathStack.push({x: newX, y: newY});
+            }
+
+            player.x = newX;
+            player.y = newY;
+            
+            // Check Win
+            if(player.x === exit.x && player.y === exit.y) {
+                winGame();
+            }
+        }
+        
+        // 4. Always Draw (Update view to show turning even if blocked)
+        draw();
+    }
+
+    // --- Mouse/Touch Input for Dragging Exit ---
+    function getMousePos(evt) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = evt.clientX || (evt.touches && evt.touches[0].clientX);
+        const clientY = evt.clientY || (evt.touches && evt.touches[0].clientY);
+        return {
+            x: clientX - rect.left,
+            y: clientY - rect.top
+        };
+    }
+
+    function handleInputStart(e) {
+        const pos = getMousePos(e);
+        const gridX = Math.floor(pos.x / TILE_SIZE);
+        const gridY = Math.floor(pos.y / TILE_SIZE);
+
+        if (gridX === exit.x && gridY === exit.y) {
+            isDraggingExit = true;
+            dragPos = pos;
+            if(e.type === 'touchstart') e.preventDefault();
+            draw();
+        }
+    }
+
+    function handleInputMove(e) {
+        if (isDraggingExit) {
+            if(e.type === 'touchmove') e.preventDefault();
+            dragPos = getMousePos(e);
+            draw();
+        }
+    }
+
+    function handleInputEnd(e) {
+        if (isDraggingExit) {
+            isDraggingExit = false;
+            
+            const gridX = Math.floor(dragPos.x / TILE_SIZE);
+            const gridY = Math.floor(dragPos.y / TILE_SIZE);
+
+            let isValid = true;
+            if (gridX === 0 && gridY === 1) isValid = false;
+            if (gridX < 0 || gridX >= COLS || gridY < 0 || gridY >= ROWS) isValid = false;
+
+            if (isValid) {
+                maze[exit.y][exit.x] = 1; // Restore old wall
+                exit = { x: gridX, y: gridY };
+                
+                // --- UPDATE EXIT CONNECTIVITY ---
+                maze[exit.y][exit.x] = 0; 
+                let currX = exit.x;
+                let currY = exit.y;
+                let connected = false;
+                let safety = 0;
+
+                while (!connected && safety < 100) {
+                    safety++;
+                    const neighbors = [
+                        {x: currX, y: currY - 1}, {x: currX, y: currY + 1},
+                        {x: currX - 1, y: currY}, {x: currX + 1, y: currY}
+                    ];
+                    for (let n of neighbors) {
+                        if (n.x >= 0 && n.x < COLS && n.y >= 0 && n.y < ROWS) {
+                            if (maze[n.y][n.x] === 0) {
+                                connected = true; 
+                                break;
+                            }
+                        }
+                    }
+                    if (!connected) {
+                        let validNeighbors = neighbors.filter(n => n.x > 0 && n.x < COLS-1 && n.y > 0 && n.y < ROWS-1);
+                        if (validNeighbors.length === 0) break; 
+                        const next = validNeighbors[Math.floor(Math.random() * validNeighbors.length)];
+                        maze[next.y][next.x] = 0; 
+                        currX = next.x;
+                        currY = next.y;
+                    }
+                }
+                resetLevelState();
+            } else {
+                draw(); 
+            }
+        }
+    }
+
+    canvas.addEventListener('mousedown', handleInputStart);
+    canvas.addEventListener('mousemove', handleInputMove);
+    window.addEventListener('mouseup', handleInputEnd); 
+    canvas.addEventListener('touchstart', handleInputStart, {passive: false});
+    canvas.addEventListener('touchmove', handleInputMove, {passive: false});
+    window.addEventListener('touchend', handleInputEnd);
+
+    function winGame() {
+        isFrozen = true;
+        stopBot();
+        draw();
+        messageEl.style.display = 'block';
+        
+        const gameId = gameHistory.length + 1;
+        const record = {
+            id: gameId,
+            mode: gameMode,
+            steps: fullTrace.length,
+            returns: returnCount,
+            path: [...fullTrace],
+            timestamp: new Date().toLocaleTimeString(),
+            size: `${COLS}x${ROWS}`
+        };
+        gameHistory.push(record);
+        updateHistoryUI();
+
+        if (autoRestartCheck.checked) {
+            restartBtn.style.display = 'none';
+            if (newMapCheck.checked) {
+                winText.textContent = "Generating new maze...";
+                winTimeout = setTimeout(() => {
+                    generateMaze();
+                }, 2000);
+            } else {
+                winText.textContent = "Restarting same maze...";
+                winTimeout = setTimeout(() => {
+                    resetLevelState();
+                }, 2000);
+            }
+        } else {
+            winText.textContent = "Dwarf escaped!";
+            restartBtn.style.display = 'inline-block';
+        }
+    }
+    
+    function updateHistoryUI() {
+        if (gameHistory.length === 0) {
+            historyList.innerHTML = '<div style="padding:5px; color:#7f8c8d;">No games completed yet.</div>';
+            return;
+        }
+        let html = '';
+        for (let i = gameHistory.length - 1; i >= 0; i--) {
+            const g = gameHistory[i];
+            const isSelected = viewingHistoryIdx === i ? 'selected' : '';
+            html += `<div class="history-item ${isSelected}" onclick="viewHistory(${i})">
+                        <span>Game ${g.id} (${g.mode})</span>
+                        <span>${g.steps} steps</span>
+                     </div>`;
+        }
+        historyList.innerHTML = html;
+    }
+
+    window.viewHistory = function(index) {
+        if (viewingHistoryIdx === index) {
+            viewingHistoryIdx = -1;
+            detailsContent.innerHTML = '<span style="color:#7f8c8d;">Select a game from history to view details.</span>';
+        } else {
+            viewingHistoryIdx = index;
+            const g = gameHistory[index];
+            const pathAnalysis = analyzePathSegments(g.path);
+            let html = `<div style="margin-bottom:10px;">
+                            <strong>Game ID:</strong> ${g.id} | 
+                            <strong>Time:</strong> ${g.timestamp}<br>
+                            <strong>Mode:</strong> ${g.mode} | 
+                            <strong>Size:</strong> ${g.size}<br>
+                            <strong>Steps:</strong> ${g.steps} | 
+                            <strong>Returns:</strong> ${g.returns}
+                        </div>`;
+            html += `<strong>Path Summary:</strong><br>${pathAnalysis}`;
+            detailsContent.innerHTML = html;
+        }
+        updateHistorySelection();
+        drawTrace();
+    };
+
+    function updateHistorySelection() {
+        updateHistoryUI();
+    }
+
+    function analyzePathSegments(path) {
+        if (!path || path.length < 2) return "No movement";
+        let segments = [];
+        let currentDir = null;
+        let steps = 0;
+        for (let i = 0; i < path.length - 1; i++) {
+            const p1 = path[i];
+            const p2 = path[i+1];
+            let dir = "";
+            if (p2.x > p1.x) dir = "Right";
+            else if (p2.x < p1.x) dir = "Left";
+            else if (p2.y > p1.y) dir = "Down";
+            else if (p2.y < p1.y) dir = "Up";
+
+            if (dir !== currentDir) {
+                if (currentDir !== null) {
+                    segments.push(`${currentDir} (${steps})`);
+                }
+                currentDir = dir;
+                steps = 1;
+            } else {
+                steps++;
+            }
+        }
+        if (currentDir !== null) {
+            segments.push(`${currentDir} (${steps})`);
+        }
+        return segments.join(" -> ");
+    }
+
+    saveLogBtn.addEventListener('click', (e) => {
+        e.target.blur();
+        if (gameHistory.length === 0) {
+            detailsContent.innerHTML = '<span style="color:#e74c3c;">No history to save! Complete a game first.</span>';
+            return;
+        }
+        let content = "DWARF MAZE GAME LOGS\n====================\n\n";
+        gameHistory.forEach(g => {
+            content += `Game ID: ${g.id}\n`;
+            content += `Time: ${g.timestamp}\n`;
+            content += `Mode: ${g.mode}\n`;
+            content += `Maze Size: ${g.size}\n`;
+            content += `Total Steps: ${g.steps}\n`;
+            content += `Returns: ${g.returns}\n\n`;
+            content += `--- DECISION TRACK (Direction & Duration) ---\n`;
+            content += analyzePathSegments(g.path);
+            content += `\n\n`;
+            content += `--- RAW COORDINATES ---\n`;
+            content += g.path.map(p => `(${p.x},${p.y})`).join(" -> ");
+            content += "\n\n========================================\n\n";
+        });
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'dwarf_maze_logs.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+
+    let clearConfirmTimer = null;
+    clearLogBtn.addEventListener('click', (e) => {
+        e.target.blur();
+        if (clearLogBtn.textContent === "Clear Logs") {
+            clearLogBtn.textContent = "Sure?";
+            clearLogBtn.style.backgroundColor = "#e74c3c";
+            clearConfirmTimer = setTimeout(() => {
+                clearLogBtn.textContent = "Clear Logs";
+                clearLogBtn.style.backgroundColor = "#c0392b";
+            }, 3000);
+        } else {
+            if (clearConfirmTimer) clearTimeout(clearConfirmTimer);
+            gameHistory = [];
+            viewingHistoryIdx = -1;
+            updateHistoryUI();
+            detailsContent.innerHTML = '<span style="color:#7f8c8d;">History cleared.</span>';
+            drawTrace(); 
+            clearLogBtn.textContent = "Clear Logs";
+            clearLogBtn.style.backgroundColor = "#c0392b";
+        }
+    });
+
+    restartBtn.addEventListener('click', (e) => {
+        e.target.blur();
+        if (newMapCheck.checked) {
+            generateMaze();
+        } else {
+            resetLevelState();
+        }
+    });
+
+    // --- Mode Selection & Bot ---
+    modeSelect.addEventListener('change', (e) => {
+        e.target.blur();
+        gameMode = e.target.value;
+        if (gameMode === 'bot') {
+            botAlgoSelect.style.display = 'inline-block';
+            if (botAlgoSelect.value === 'separator') {
+                isPaused = true;
+                stopBot();
+            } else {
+                startBot();
+            }
+        } else {
+            // HUMAN MODE
+            botAlgoSelect.style.display = 'none';
+            stopBot();
+            
+            // FIX: Always unpause when switching to Human Control
+            // This ensures inputs work immediately even if previously paused
+            if (isPaused) {
+                isPaused = false;
+                pauseBtn.textContent = "Pause";
+            }
+        }
+        draw();
+    });
+
+    botAlgoSelect.addEventListener('change', (e) => {
+        e.target.blur();
+        if (botAlgoSelect.value === 'separator') {
+            isPaused = true;
+            stopBot(); 
+            draw();
+        } else if (gameMode === 'bot') {
+            if (isPaused) {
+                isPaused = false;
+                pauseBtn.textContent = "Pause";
+            }
+            startBot();
+        }
+    });
+
+    mapTypeSelect.addEventListener('change', (e) => {
+        e.target.blur();
+        // Do not regenerate immediately; wait for new map action
+    });
+
+    speedSelect.addEventListener('change', (e) => {
+        e.target.blur();
+        if (gameMode === 'bot' && !isPaused && !isFrozen) {
+            startBot(true); 
+        }
+    });
+
+    pauseBtn.addEventListener('click', (e) => {
+        e.target.blur();
+        if (isFrozen) return;
+        isPaused = !isPaused;
+        pauseBtn.textContent = isPaused ? "Resume" : "Pause";
+        draw();
+    });
+
+    newMapBtn.addEventListener('click', (e) => {
+        e.target.blur();
+        generateMaze();
+    });
+
+    autoRestartCheck.addEventListener('change', (e) => {
+        e.target.blur();
+        if (autoRestartCheck.checked) {
+            newMapCheck.disabled = false;
+        } else {
+            newMapCheck.disabled = true;
+        }
+    });
+
+    function startBot(preserveMemory = false) {
+        stopBot();
+        
+        if (!preserveMemory) {
+            botVisited = new Set();
+            pathStack.forEach(p => botVisited.add(`${p.x},${p.y}`));
+            logBotDecision(`Bot Started: ${botAlgoSelect.options[botAlgoSelect.selectedIndex].text}`, 'highlight');
+        }
+        
+        const speed = parseInt(speedSelect.value);
+        botInterval = setInterval(runBotStep, speed);
+    }
+
+    function stopBot() {
+        if (botInterval) clearInterval(botInterval);
+    }
+
+    function runBotStep() {
+        if (isFrozen || isPaused) return;
+        
+        const algo = botAlgoSelect.value;
+        if (algo === 'separator') return;
+
+        if (algo === 'dfs') runBotDFS();
+        else if (algo === 'bfs') runBotBFS();
+        else if (algo === 'wall_left') runBotWallFollower('left');
+        else if (algo === 'wall_right') runBotWallFollower('right');
+        else if (algo === 'random') runBotRandom();
+    }
+
+    // 1. Blind Deep First Search
+    function runBotDFS() {
+        const x = player.x;
+        const y = player.y;
+
+        const possibleMoves = [];
+        if (y > 0 && maze[y-1][x] === 0) possibleMoves.push({dx: 0, dy: -1, dir: 'Up'});
+        if (y < ROWS-1 && maze[y+1][x] === 0) possibleMoves.push({dx: 0, dy: 1, dir: 'Down'});
+        if (x > 0 && maze[y][x-1] === 0) possibleMoves.push({dx: -1, dy: 0, dir: 'Left'});
+        if (x < COLS-1 && maze[y][x+1] === 0) possibleMoves.push({dx: 1, dy: 0, dir: 'Right'});
+
+        const unvisitedMoves = possibleMoves.filter(m => 
+            !botVisited.has(`${x + m.dx},${y + m.dy}`)
+        );
+
+        if (unvisitedMoves.length > 0) {
+            const moveData = unvisitedMoves[Math.floor(Math.random() * unvisitedMoves.length)];
+            const chance = (100 / unvisitedMoves.length).toFixed(0);
+            
+            if (unvisitedMoves.length > 1) {
+                 const optionsLog = unvisitedMoves.map(m => `${m.dir} (${chance}%)`).join(', ');
+                 logBotDecision(`Crossroad: ${optionsLog}. Picked: ${moveData.dir}`);
+            } else {
+                 logBotDecision(`Following path: ${moveData.dir}`);
+            }
+            
+            botVisited.add(`${x + moveData.dx},${y + moveData.dy}`);
+            move(moveData.dx, moveData.dy);
+        } else {
+            if (pathStack.length > 1) {
+                const prev = pathStack[pathStack.length - 2];
+                logBotDecision(`Dead end at (${x},${y}). Backtracking.`, 'warn');
+                move(prev.x - x, prev.y - y);
+            }
+        }
+    }
+
+    // 4. Blind Wide First Search (BFS)
+    function runBotBFS() {
+        const startNode = {x: player.x, y: player.y, firstMove: null, depth: 0};
+        let queue = [startNode];
+        let visitedInSearch = new Set();
+        visitedInSearch.add(`${player.x},${player.y}`);
+
+        let foundDepth = null;
+        let candidateMoves = [];
+
+        while (queue.length > 0) {
+            let current = queue.shift();
+            
+            if (foundDepth !== null && current.depth > foundDepth) {
+                break;
+            }
+
+            let cx = current.x;
+            let cy = current.y;
+
+            if (!botVisited.has(`${cx},${cy}`) && !(cx === player.x && cy === player.y)) {
+                if (foundDepth === null) foundDepth = current.depth;
+                if (current.firstMove) candidateMoves.push(current.firstMove);
+                continue; 
+            }
+
+            const neighbors = [
+                {x:cx, y:cy-1, dir:'Up', dx: 0, dy: -1}, 
+                {x:cx, y:cy+1, dir:'Down', dx: 0, dy: 1}, 
+                {x:cx-1, y:cy, dir:'Left', dx: -1, dy: 0}, 
+                {x:cx+1, y:cy, dir:'Right', dx: 1, dy: 0}
+            ];
+
+            for (let n of neighbors) {
+                if (n.x >= 0 && n.x < COLS && n.y >= 0 && n.y < ROWS && 
+                    maze[n.y][n.x] === 0 && !visitedInSearch.has(`${n.x},${n.y}`)) {
+                    
+                    visitedInSearch.add(`${n.x},${n.y}`);
+                    
+                    let nextFirstMove = current.firstMove;
+                    if (nextFirstMove === null) {
+                        nextFirstMove = {dx: n.dx, dy: n.dy, dir: n.dir};
+                    }
+                    
+                    queue.push({x: n.x, y: n.y, firstMove: nextFirstMove, depth: current.depth + 1});
+                }
+            }
+        }
+
+        if (candidateMoves.length > 0) {
+            const uniqueMoves = {};
+            candidateMoves.forEach(m => { uniqueMoves[m.dir] = m; });
+            const validOptions = Object.values(uniqueMoves);
+
+            const moveData = validOptions[Math.floor(Math.random() * validOptions.length)];
+            const chance = (100 / validOptions.length).toFixed(0);
+
+            if (validOptions.length > 1) {
+                const optionsLog = validOptions.map(m => `${m.dir} (${chance}%)`).join(', ');
+                logBotDecision(`Crossroad: ${optionsLog}. Picked: ${moveData.dir}`);
+            } else {
+                logBotDecision(`Following path: ${moveData.dir}`);
+            }
+            
+            botVisited.add(`${player.x + moveData.dx},${player.y + moveData.dy}`);
+            move(moveData.dx, moveData.dy);
+        } else {
+            logBotDecision(`BFS: All reachable tiles visited. Stuck?`, 'warn');
+        }
+    }
+
+    // 2. Random Mouse
+    function runBotRandom() {
+        const x = player.x;
+        const y = player.y;
+        const possibleMoves = [];
+        if (y > 0 && maze[y-1][x] === 0) possibleMoves.push({dx: 0, dy: -1, dir:'Up'});
+        if (y < ROWS-1 && maze[y+1][x] === 0) possibleMoves.push({dx: 0, dy: 1, dir:'Down'});
+        if (x > 0 && maze[y][x-1] === 0) possibleMoves.push({dx: -1, dy: 0, dir:'Left'});
+        if (x < COLS-1 && maze[y][x+1] === 0) possibleMoves.push({dx: 1, dy: 0, dir:'Right'});
+
+        // Pure random: always consider all valid neighbors (including backwards)
+        const validMoves = possibleMoves;
+
+        if (validMoves.length > 0) {
+            const chance = (100 / validMoves.length).toFixed(0);
+            const moveData = validMoves[Math.floor(Math.random() * validMoves.length)];
+            
+            if (validMoves.length > 1) {
+                const optionsLog = validMoves.map(m => `${m.dir} (${chance}%)`).join(', ');
+                logBotDecision(`Rolled: ${optionsLog}. Picked: ${moveData.dir}`);
+            } else {
+                // Show 100% even in corridor
+                logBotDecision(`Rolled: ${moveData.dir} (100%)`);
+            }
+            
+            move(moveData.dx, moveData.dy);
+        } else if (possibleMoves.length > 0) {
+            const moveData = possibleMoves[0];
+            logBotDecision(`Dead end. Forced: ${moveData.dir}`, 'warn');
+            move(moveData.dx, moveData.dy);
+        }
+    }
+
+    // 3. Wall Follower
+    function runBotWallFollower(side) {
+        const x = player.x;
+        const y = player.y;
+        const facing = player.facing;
+        const vecs = {
+            'up': {dx: 0, dy: -1, label: 'Up'},
+            'down': {dx: 0, dy: 1, label: 'Down'},
+            'left': {dx: -1, dy: 0, label: 'Left'},
+            'right': {dx: 1, dy: 0, label: 'Right'}
+        };
+        let front, left, right, back;
+        if (facing === 'up') {
+            front = vecs.up; left = vecs.left; right = vecs.right; back = vecs.down;
+        } else if (facing === 'down') {
+            front = vecs.down; left = vecs.right; right = vecs.left; back = vecs.up;
+        } else if (facing === 'left') {
+            front = vecs.left; left = vecs.down; right = vecs.up; back = vecs.right;
+        } else { 
+            front = vecs.right; left = vecs.up; right = vecs.down; back = vecs.left;
+        }
+
+        function canMove(vec) {
+            const nx = x + vec.dx;
+            const ny = y + vec.dy;
+            if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) return false;
+            return maze[ny][nx] === 0;
+        }
+
+        let chosenMove = null;
+        let decision = "";
+
+        if (side === 'left') {
+            if (canMove(left)) { chosenMove = left; decision = "Left open -> Turn Left"; }
+            else if (canMove(front)) { chosenMove = front; decision = "Left wall -> Go Front"; }
+            else if (canMove(right)) { chosenMove = right; decision = "Front blocked -> Turn Right"; }
+            else { chosenMove = back; decision = "Dead End -> Turn Back"; }
+        } else {
+            if (canMove(right)) { chosenMove = right; decision = "Right open -> Turn Right"; }
+            else if (canMove(front)) { chosenMove = front; decision = "Right wall -> Go Front"; }
+            else if (canMove(left)) { chosenMove = left; decision = "Front blocked -> Turn Left"; }
+            else { chosenMove = back; decision = "Dead End -> Turn Back"; }
+        }
+
+        if (chosenMove) {
+            logBotDecision(`Face: ${facing}. ${decision}`);
+            move(chosenMove.dx, chosenMove.dy);
+        }
+    }
+
+    // --- Inputs ---
+    window.addEventListener('keydown', (e) => {
+        if (gameMode !== 'human') return;
+        
+        // Prevent default browser scrolling for arrow keys
+        if(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+            e.preventDefault();
+        }
+
+        if (e.key === 'ArrowUp') move(0, -1);
+        if (e.key === 'ArrowDown') move(0, 1);
+        if (e.key === 'ArrowLeft') move(-1, 0);
+        if (e.key === 'ArrowRight') move(1, 0);
+    });
+
+    const buttons = document.querySelectorAll('.btn');
+    buttons.forEach(btn => {
+        const handleBtn = (id) => {
+             if (id === 'btnUp') move(0, -1);
+             if (id === 'btnDown') move(0, 1);
+             if (id === 'btnLeft') move(-1, 0);
+             if (id === 'btnRight') move(1, 0);
+        };
+
+        // Touch Handling
+        btn.addEventListener('touchstart', (e) => {
+            if (gameMode !== 'human') return;
+            e.preventDefault();
+            handleBtn(btn.id);
+            // Visual feedback
+            btn.style.transform = "translateY(3px)";
+            btn.style.boxShadow = "0 0 0 #2c3e50";
+            btn.style.backgroundColor = "#e67e22";
+        });
+
+        btn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            // Reset visual
+            btn.style.transform = "translateY(0)";
+            btn.style.boxShadow = "0 3px 0 #2c3e50";
+            btn.style.backgroundColor = "#34495e";
+        });
+        
+        // Mouse Handling
+        btn.addEventListener('mousedown', (e) => {
+            if (gameMode !== 'human') return;
+            handleBtn(btn.id);
+            btn.style.transform = "translateY(3px)";
+            btn.style.boxShadow = "0 0 0 #2c3e50";
+            btn.style.backgroundColor = "#e67e22";
+        });
+
+        const resetStyle = () => {
+            btn.style.transform = "translateY(0)";
+            btn.style.boxShadow = "0 3px 0 #2c3e50";
+            btn.style.backgroundColor = "#34495e";
+        };
+
+        btn.addEventListener('mouseup', resetStyle);
+        btn.addEventListener('mouseleave', resetStyle);
+    });
+
+    // --- Drawing ---
+    function draw() {
+        drawGame();
+        drawTrace();
+    }
+
+    function drawGame() {
+        ctx.fillStyle = '#2c3e50'; 
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (maze[r][c] === 1) {
+                    ctx.fillStyle = '#95a5a6';
+                    // Draw simple flat wall without 3D shadow depth
+                    ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                }
+            }
+        }
+
+        if (isDraggingExit) {
+            ctx.fillStyle = 'rgba(39, 174, 96, 0.5)';
+            ctx.fillRect(exit.x * TILE_SIZE, exit.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            ctx.fillStyle = '#27ae60';
+            ctx.fillRect(dragPos.x - TILE_SIZE/2, dragPos.y - TILE_SIZE/2, TILE_SIZE, TILE_SIZE);
+            ctx.fillStyle = '#fff';
+            ctx.font = '12px Arial';
+            ctx.fillText("EXIT", dragPos.x, dragPos.y - 10);
+        } else {
+            ctx.fillStyle = '#27ae60'; 
+            ctx.fillRect(exit.x * TILE_SIZE, exit.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            ctx.fillStyle = '#fff';
+            ctx.font = `${Math.floor(TILE_SIZE/2)}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText("EXIT", exit.x * TILE_SIZE + TILE_SIZE/2, exit.y * TILE_SIZE + TILE_SIZE/2);
+        }
+
+        const pPadding = 3;
+        const dw = TILE_SIZE - pPadding * 2;
+        const dx = player.x * TILE_SIZE + pPadding;
+        const dy = player.y * TILE_SIZE + pPadding;
+
+        ctx.fillStyle = '#d35400';
+        ctx.fillRect(dx, dy, dw, dw);
+        ctx.fillStyle = '#f39c12';
+        ctx.fillRect(dx, dy, dw, dw/2);
+
+        if (player.facing === 'down') {
+            ctx.fillStyle = '#ecf0f1';
+            ctx.fillRect(dx + 2, dy + dw/2 + 2, dw - 4, dw/2 - 2);
+            ctx.fillStyle = '#000';
+            ctx.fillRect(dx + 4, dy + 4, 2, 2);
+            ctx.fillRect(dx + dw - 6, dy + 4, 2, 2);
+        } else if (player.facing === 'up') {
+            ctx.fillStyle = '#f39c12'; 
+            ctx.fillRect(dx, dy, dw, dw * 0.7);
+        } else if (player.facing === 'right') {
+            ctx.fillStyle = '#ecf0f1';
+            ctx.fillRect(dx + dw/2, dy + dw/2 + 2, dw/2 - 1, dw/2 - 2);
+            ctx.fillStyle = '#000';
+            ctx.fillRect(dx + dw - 6, dy + 4, 2, 2);
+        } else if (player.facing === 'left') {
+            ctx.fillStyle = '#ecf0f1';
+            ctx.fillRect(dx + 1, dy + dw/2 + 2, dw/2 - 1, dw/2 - 2);
+            ctx.fillStyle = '#000';
+            ctx.fillRect(dx + 4, dy + 4, 2, 2);
+        }
+
+        const isBotWaiting = gameMode === 'bot' && botAlgoSelect.value === 'separator';
+        if (isPaused && !isBotWaiting) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#f1c40f';
+            ctx.font = 'bold 24px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText("PAUSED", canvas.width/2, canvas.height/2);
+        }
+    }
+
+    function drawTrace() {
+        let pathData = fullTrace;
+        let isHistorical = false;
+
+        if (viewingHistoryIdx !== -1 && gameHistory[viewingHistoryIdx]) {
+            pathData = gameHistory[viewingHistoryIdx].path;
+            isHistorical = true;
+        }
+
+        traceCtx.fillStyle = '#000000'; 
+        traceCtx.fillRect(0, 0, traceCanvas.width, traceCanvas.height);
+
+        traceCtx.fillStyle = '#222'; 
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (maze[r][c] === 1) {
+                    traceCtx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                }
+            }
+        }
+
+        const edgeCounts = {};
+        if (pathData.length > 1) {
+            for (let i = 0; i < pathData.length - 1; i++) {
+                const p1 = pathData[i];
+                const p2 = pathData[i+1];
+                const k1 = `${p1.x},${p1.y}`;
+                const k2 = `${p2.x},${p2.y}`;
+                const key = k1 < k2 ? `${k1}|${k2}` : `${k2}|${k1}`;
+                if (!edgeCounts[key]) {
+                    edgeCounts[key] = { count: 0, p1, p2 };
+                }
+                edgeCounts[key].count++;
+            }
+
+            traceCtx.lineWidth = Math.max(3, TILE_SIZE / 4); 
+            traceCtx.lineJoin = 'round';
+            traceCtx.lineCap = 'round';
+
+            const edges = Object.values(edgeCounts).sort((a, b) => a.count - b.count);
+
+            edges.forEach(edge => {
+                const { count, p1, p2 } = edge;
+                const x1 = p1.x * TILE_SIZE + TILE_SIZE/2;
+                const y1 = p1.y * TILE_SIZE + TILE_SIZE/2;
+                const x2 = p2.x * TILE_SIZE + TILE_SIZE/2;
+                const y2 = p2.y * TILE_SIZE + TILE_SIZE/2;
+
+                const maxSteps = 108;
+                const cappedCount = Math.min(count, maxSteps);
+                const lightness = 90 - ((cappedCount - 1) / (maxSteps - 1)) * 70;
+                
+                traceCtx.strokeStyle = `hsl(0, 100%, ${lightness}%)`;
+                traceCtx.beginPath();
+                traceCtx.moveTo(x1, y1);
+                traceCtx.lineTo(x2, y2);
+                traceCtx.stroke();
+            });
+        }
+
+        if (pathData.length > 0) {
+            traceCtx.fillStyle = '#27ae60'; 
+            const startX = pathData[0].x * TILE_SIZE + TILE_SIZE/2;
+            const startY = pathData[0].y * TILE_SIZE + TILE_SIZE/2;
+            traceCtx.beginPath();
+            traceCtx.arc(startX, startY, 4, 0, Math.PI * 2);
+            traceCtx.fill();
+        }
+
+        traceCtx.fillStyle = '#fff'; 
+        const lastP = pathData[pathData.length - 1];
+        if (lastP) {
+            const curX = lastP.x * TILE_SIZE + TILE_SIZE/2;
+            const curY = lastP.y * TILE_SIZE + TILE_SIZE/2;
+            traceCtx.beginPath();
+            traceCtx.arc(curX, curY, 4, 0, Math.PI * 2);
+            traceCtx.fill();
+            traceCtx.strokeStyle = '#000';
+            traceCtx.lineWidth = 1;
+            traceCtx.stroke();
+        }
+        
+        if (isHistorical) {
+            traceCtx.fillStyle = "#fff";
+            traceCtx.font = "14px Arial";
+            traceCtx.fillText(`Viewing Game ${gameHistory[viewingHistoryIdx].id}`, 10, 20);
+        }
+    }
+
+    initDimensions();
+    generateMaze();
+
+    window.addEventListener('resize', () => {
+        initDimensions();
+        draw();
+    });
+
+</script>
+</body>
+</html>
