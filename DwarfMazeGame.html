@@ -525,6 +525,115 @@
     let isDraggingExit = false;
     let dragPos = { x: 0, y: 0 };
 
+    // --- Dwarf Warrior Pixel Art (inspired by DwarfWarrior.png) ---
+    // Color palette: each char maps to a hex color
+    const DWARF_PALETTE = {
+        '.': null,       // transparent
+        'h': '#C8B090',  // horn (bone/tan)
+        'g': '#DAA520',  // gold trim
+        's': '#708090',  // steel/silver armor
+        'S': '#8898A8',  // steel highlight
+        'f': '#DEB887',  // flesh/skin
+        'e': '#4466BB',  // eye blue
+        'n': '#C07060',  // nose (reddish)
+        'b': '#8B5520',  // beard brown
+        'B': '#6B3510',  // braid dark brown
+        'd': '#555560',  // dark boot
+        'a': '#909898',  // axe blade
+        'A': '#B8C0C8',  // axe blade highlight
+        'w': '#5C3310',  // axe handle (wood)
+        'D': '#606870',  // dark armor/chainmail
+    };
+
+    // 14x14 front-facing sprite (for down) - blocky/fat build
+    const DWARF_FRONT = [
+        '...h......h.aa',
+        '..hgggggggghAa',
+        '..sssSSSssswA.',
+        '..sssgssgsssw.',
+        '..ssfeffefsw..',
+        '..ssffnnffsw..',
+        '..bbbbbbbbbw..',
+        '.bbbbbbBBbbbbb',
+        '.ssssgBBBgssss',
+        '.ssssssBBsssss',
+        '..sssggggggsss',
+        '..DDDdd..ddDDD',
+        '..gddd..dddg..',
+        '..dddd..dddd..',
+    ];
+
+    // 14x14 back-facing sprite (for up) - blocky/fat build
+    const DWARF_BACK = [
+        '..hh....hh....',
+        '..hggggggggh..',
+        '..sssSSSSSss..',
+        '..ssssssssss..',
+        '..DDDDDDDDDD..',
+        '..bbbbbbbbbb..',
+        '.bbbbbbbbbbbb.',
+        '.bbbbbBBBbbbb.',
+        '.ssssgBBBgssss',
+        '.ssssssBBsssss',
+        '..sssggggggsss',
+        '..DDDdd..ddDDD',
+        '..gddd..dddg..',
+        '..dddd..dddd..',
+    ];
+
+    // 14x14 right-facing side-view sprite (mirrored for left) - blocky/fat build
+    const DWARF_RIGHT = [
+        '.aa.hh........',
+        '.Aahgggggg....',
+        '..AwssSSSsss..',
+        '...wssssgsss..',
+        '...wsssfeffss.',
+        '...wsssffnbbbs',
+        '...wbbbbbbbbbb',
+        '....bbbbBBbbbb',
+        '...sssgBBBgsss',
+        '...sssssssssss',
+        '....ssggggsss.',
+        '....DDDddDDD..',
+        '....gddddddg..',
+        '....dddddddd..',
+    ];
+
+    function drawDwarfPixelArt(ctx, x, y, size, facing) {
+        let sprite;
+        if (facing === 'up') sprite = DWARF_BACK;
+        else if (facing === 'right' || facing === 'left') sprite = DWARF_RIGHT;
+        else sprite = DWARF_FRONT;
+
+        const p = size / 14;
+
+        ctx.save();
+        if (facing === 'left') {
+            ctx.translate(x + size, y);
+            ctx.scale(-1, 1);
+            x = 0;
+            y = 0;
+        }
+
+        for (let r = 0; r < sprite.length; r++) {
+            const row = sprite[r];
+            for (let c = 0; c < row.length; c++) {
+                const color = DWARF_PALETTE[row[c]];
+                if (color) {
+                    ctx.fillStyle = color;
+                    ctx.fillRect(
+                        Math.floor(x + c * p),
+                        Math.floor(y + r * p),
+                        Math.ceil(p),
+                        Math.ceil(p)
+                    );
+                }
+            }
+        }
+
+        ctx.restore();
+    }
+
     // --- Helper for Bot Logging ---
     function logBotDecision(msg, type='normal') {
         const div = document.createElement('div');
@@ -1471,36 +1580,11 @@
             ctx.fillText("EXIT", exit.x * TILE_SIZE + TILE_SIZE/2, exit.y * TILE_SIZE + TILE_SIZE/2);
         }
 
-        const pPadding = 3;
+        const pPadding = 1;
         const dw = TILE_SIZE - pPadding * 2;
         const dx = player.x * TILE_SIZE + pPadding;
         const dy = player.y * TILE_SIZE + pPadding;
-
-        ctx.fillStyle = '#d35400';
-        ctx.fillRect(dx, dy, dw, dw);
-        ctx.fillStyle = '#f39c12';
-        ctx.fillRect(dx, dy, dw, dw/2);
-
-        if (player.facing === 'down') {
-            ctx.fillStyle = '#ecf0f1';
-            ctx.fillRect(dx + 2, dy + dw/2 + 2, dw - 4, dw/2 - 2);
-            ctx.fillStyle = '#000';
-            ctx.fillRect(dx + 4, dy + 4, 2, 2);
-            ctx.fillRect(dx + dw - 6, dy + 4, 2, 2);
-        } else if (player.facing === 'up') {
-            ctx.fillStyle = '#f39c12'; 
-            ctx.fillRect(dx, dy, dw, dw * 0.7);
-        } else if (player.facing === 'right') {
-            ctx.fillStyle = '#ecf0f1';
-            ctx.fillRect(dx + dw/2, dy + dw/2 + 2, dw/2 - 1, dw/2 - 2);
-            ctx.fillStyle = '#000';
-            ctx.fillRect(dx + dw - 6, dy + 4, 2, 2);
-        } else if (player.facing === 'left') {
-            ctx.fillStyle = '#ecf0f1';
-            ctx.fillRect(dx + 1, dy + dw/2 + 2, dw/2 - 1, dw/2 - 2);
-            ctx.fillStyle = '#000';
-            ctx.fillRect(dx + 4, dy + 4, 2, 2);
-        }
+        drawDwarfPixelArt(ctx, dx, dy, dw, player.facing);
 
         const isBotWaiting = gameMode === 'bot' && botAlgoSelect.value === 'separator';
         if (isPaused && !isBotWaiting) {

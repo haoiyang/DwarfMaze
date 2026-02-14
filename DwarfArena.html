@@ -1,0 +1,1813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dwarf Arena</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background: #1a1a2e;
+    color: #ecf0f1;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    padding: 10px;
+    min-height: 100vh;
+    user-select: none;
+}
+
+/* === TOP SECTION: Arena + Sidebar === */
+.top-section {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+#game-container {
+    background: #0d0d1a;
+    border: 2px solid #34495e;
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+}
+#arenaCanvas {
+    display: block;
+}
+.sidebar {
+    width: 140px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+}
+.sidebar-item {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid #34495e;
+    border-radius: 6px;
+    padding: 8px 10px;
+}
+.sidebar-label {
+    font-size: 11px;
+    color: #7f8c8d;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+.sidebar-value {
+    font-size: 14px;
+    font-weight: bold;
+    color: #e67e22;
+    font-family: 'Courier New', monospace;
+}
+.sidebar select {
+    width: 100%;
+    background: #2c3e50;
+    color: #ecf0f1;
+    border: 1px solid #34495e;
+    border-radius: 4px;
+    padding: 4px;
+    font-size: 13px;
+    cursor: pointer;
+}
+.sidebar-btn {
+    width: 100%;
+    padding: 7px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    background: transparent;
+    transition: all 0.15s;
+    border: 1px solid;
+}
+.sidebar-btn.save-btn {
+    border-color: #27ae60;
+    color: #27ae60;
+}
+.sidebar-btn.save-btn:hover {
+    background: rgba(39,174,96,0.15);
+}
+.sidebar-btn.load-btn {
+    border-color: #3498db;
+    color: #3498db;
+}
+.sidebar-btn.load-btn:hover {
+    background: rgba(52,152,219,0.15);
+}
+.sidebar-filename .sidebar-value {
+    font-size: 11px;
+    word-break: break-all;
+    color: #95a5a6;
+}
+
+/* === CONTROLS COLUMN (middle of 3-column layout) === */
+.controls-column {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex-shrink: 0;
+}
+.controls-column h3 {
+    font-size: 13px;
+    color: #e67e22;
+    margin: 0;
+    font-weight: 600;
+}
+
+/* D-Pad */
+.controls {
+    display: grid;
+    grid-template-areas:
+        "upleft up upright"
+        "left . right"
+        "downleft down downright";
+    grid-template-columns: 50px 50px 50px;
+    grid-template-rows: 50px 50px 50px;
+    gap: 3px;
+    flex-shrink: 0;
+}
+.dir-btn {
+    background: #2c3e50;
+    color: #ecf0f1;
+    border: 2px solid #34495e;
+    border-radius: 8px;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.1s;
+}
+.dir-btn:active, .dir-btn.pressed {
+    background: #e67e22;
+    border-color: #d35400;
+    transform: scale(0.95);
+}
+.dir-btn.diag { font-size: 16px; }
+#btnUpLeft { grid-area: upleft; }
+#btnUp { grid-area: up; }
+#btnUpRight { grid-area: upright; }
+#btnLeft { grid-area: left; }
+#btnRight { grid-area: right; }
+#btnDownLeft { grid-area: downleft; }
+#btnDown { grid-area: down; }
+#btnDownRight { grid-area: downright; }
+
+/* Action Buttons */
+.action-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+}
+.action-btn {
+    background: #2c3e50;
+    color: #ecf0f1;
+    border: 2px solid #34495e;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.1s;
+    text-align: center;
+}
+.action-btn:active, .action-btn.pressed {
+    background: #e67e22;
+    border-color: #d35400;
+    transform: scale(0.95);
+}
+.action-btn .key-hint {
+    display: block;
+    font-size: 10px;
+    color: #7f8c8d;
+    margin-top: 2px;
+}
+.action-btn:active .key-hint, .action-btn.pressed .key-hint {
+    color: #fdebd0;
+}
+
+/* === MAPPING PANEL === */
+.mapping-panel {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid #34495e;
+    border-radius: 10px;
+    padding: 12px 15px;
+    margin-bottom: 10px;
+}
+.mapping-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+.mapping-panel h3 {
+    font-size: 14px;
+    color: #e67e22;
+    margin: 0;
+    font-weight: 600;
+}
+.mapping-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    padding: 0 4px;
+    font-size: 11px;
+    color: #7f8c8d;
+    text-transform: uppercase;
+}
+.mapping-header .col-action { width: 110px; }
+.mapping-header .col-dir { width: 80px; }
+.mapping-header .col-ms { width: 72px; }
+.mapping-header .col-figures { flex: 1; }
+.mapping-header .col-btns { width: 68px; }
+
+#mappingRows {
+    max-height: 222px;  /* ~3 rows visible (each row ~74px: 54px slot + 12px padding + 2px border + 6px margin) */
+    overflow-y: auto;
+    margin-bottom: 10px;
+}
+.mapping-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    padding: 6px;
+    background: rgba(44,62,80,0.3);
+    border-radius: 6px;
+    border: 1px solid transparent;
+    transition: border-color 0.2s;
+}
+.mapping-row.active-row {
+    border-color: #e67e22;
+}
+.mapping-row select {
+    background: #2c3e50;
+    color: #ecf0f1;
+    border: 1px solid #34495e;
+    border-radius: 4px;
+    padding: 5px 6px;
+    font-size: 12px;
+    cursor: pointer;
+}
+.action-select { width: 110px; }
+.dir-select { width: 80px; }
+.ms-input {
+    width: 72px;
+    background: #2c3e50;
+    color: #ecf0f1;
+    border: 1px solid #34495e;
+    border-radius: 4px;
+    padding: 5px 6px;
+    font-size: 12px;
+    text-align: center;
+}
+.figure-slots {
+    display: flex;
+    gap: 4px;
+    flex: 1;
+    overflow-x: auto;
+    padding: 2px 0;
+}
+.figure-slot {
+    width: 54px;
+    height: 54px;
+    border: 2px dashed #34495e;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.figure-slot:hover {
+    border-color: #4a6a8a;
+}
+.figure-slot.has-image {
+    border-color: #4a6a8a;
+    border-style: solid;
+}
+.figure-slot.active-frame {
+    border-color: #e67e22;
+    box-shadow: 0 0 6px rgba(230,126,34,0.6);
+}
+.figure-slot .remove-img-btn {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    width: 16px;
+    height: 16px;
+    background: rgba(231,76,60,0.85);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    font-size: 10px;
+    line-height: 16px;
+    text-align: center;
+    cursor: pointer;
+    padding: 0;
+    display: none;
+    z-index: 2;
+}
+.figure-slot.has-image .remove-img-btn {
+    display: block;
+}
+.figure-slot .remove-img-btn:hover {
+    background: #e74c3c;
+}
+.figure-slot .slot-placeholder {
+    font-size: 20px;
+    color: #4a6a8a;
+}
+.figure-slot img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    image-rendering: pixelated;
+}
+.figure-slot input[type="file"] {
+    display: none;
+}
+.row-btns {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+.add-figure-btn, .remove-figure-btn, .remove-row-btn {
+    width: 30px;
+    height: 30px;
+    border: 2px dashed #34495e;
+    border-radius: 4px;
+    background: transparent;
+    color: #7f8c8d;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+.add-figure-btn:hover {
+    border-color: #e67e22;
+    color: #e67e22;
+}
+.remove-figure-btn {
+    border-style: solid;
+    border-color: #5a4a2d;
+    color: #a08040;
+}
+.remove-figure-btn:hover {
+    border-color: #e67e22;
+    color: #e67e22;
+    background: rgba(230,126,34,0.1);
+}
+.remove-row-btn {
+    border-style: solid;
+    border-color: #5a2d2d;
+    color: #a04040;
+}
+.remove-row-btn:hover {
+    border-color: #e74c3c;
+    color: #e74c3c;
+    background: rgba(231,76,60,0.1);
+}
+
+/* Toolbar */
+.toolbar-btn {
+    background: transparent;
+    color: #7f8c8d;
+    border: 2px dashed #34495e;
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.toolbar-btn:hover {
+    border-color: #e67e22;
+    color: #e67e22;
+}
+
+/* === INSTRUCTIONS === */
+.instructions {
+    text-align: center;
+    font-size: 12px;
+    color: #5a6a7a;
+    padding: 8px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 6px;
+}
+.instructions span {
+    color: #7f8c8d;
+}
+.instructions kbd {
+    background: #2c3e50;
+    border: 1px solid #34495e;
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-size: 11px;
+    font-family: 'Courier New', monospace;
+    color: #e67e22;
+}
+
+/* Scrollbar */
+#mappingRows::-webkit-scrollbar { width: 6px; }
+#mappingRows::-webkit-scrollbar-track { background: transparent; }
+#mappingRows::-webkit-scrollbar-thumb { background: #34495e; border-radius: 3px; }
+
+/* Responsive */
+@media (max-width: 900px) {
+    .top-section { flex-direction: column; }
+    .controls-column { flex-direction: row; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
+    .sidebar { width: 100%; flex-direction: row; flex-wrap: wrap; }
+    .sidebar-item { flex: 1; min-width: 100px; }
+    .sidebar-btn { width: auto; flex: 1; min-width: 100px; }
+    .mapping-row { flex-wrap: wrap; }
+    .figure-slots { min-width: 0; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOP SECTION: Arena + Controls Column + Sidebar -->
+<div class="top-section">
+    <div id="game-container">
+        <canvas id="arenaCanvas"></canvas>
+    </div>
+    <div class="controls-column">
+        <h3>Direction Keys</h3>
+        <div class="controls">
+            <button class="dir-btn diag" id="btnUpLeft">◤</button>
+            <button class="dir-btn" id="btnUp">▲</button>
+            <button class="dir-btn diag" id="btnUpRight">◥</button>
+            <button class="dir-btn" id="btnLeft">◀</button>
+            <button class="dir-btn" id="btnRight">▶</button>
+            <button class="dir-btn diag" id="btnDownLeft">◣</button>
+            <button class="dir-btn" id="btnDown">▼</button>
+            <button class="dir-btn diag" id="btnDownRight">◢</button>
+        </div>
+        <h3>Control</h3>
+        <div class="action-buttons">
+            <button class="action-btn" id="btnAttack">Attack<span class="key-hint">Space</span></button>
+            <button class="action-btn" id="btnMove">Move<span class="key-hint">Shift</span></button>
+            <button class="action-btn" id="btnUnderHit">Under Hit<span class="key-hint">X</span></button>
+            <button class="action-btn" id="btnDie">Die<span class="key-hint">Z</span></button>
+            <button class="action-btn" id="btnFly">Fly<span class="key-hint">F</span></button>
+            <button class="action-btn" id="btnCrouch">Crouch<span class="key-hint">C</span></button>
+            <button class="action-btn" id="btnStand">Stand<span class="key-hint">V</span></button>
+            <button class="action-btn" id="btnIdle">Idle<span class="key-hint">I</span></button>
+            <button class="action-btn" id="btnRelive">Relive<span class="key-hint">R</span></button>
+        </div>
+    </div>
+    <div class="sidebar">
+        <div class="sidebar-item">
+            <div class="sidebar-label">Direction</div>
+            <div class="sidebar-value" id="sidebarDir">right</div>
+        </div>
+        <div class="sidebar-item">
+            <div class="sidebar-label">Action</div>
+            <div class="sidebar-value" id="sidebarAction">stand</div>
+        </div>
+        <div class="sidebar-item">
+            <div class="sidebar-label">Speed</div>
+            <select id="speedSelect">
+                <option value="2">Slow (2)</option>
+                <option value="4" selected>Normal (4)</option>
+                <option value="6">Fast (6)</option>
+                <option value="8">Turbo (8)</option>
+            </select>
+        </div>
+        <button class="sidebar-btn save-btn" id="saveBtn">Save JSON</button>
+        <button class="sidebar-btn load-btn" id="loadBtn">Load JSON</button>
+        <input type="file" id="loadFileInput" accept=".json" style="display:none;">
+        <div class="sidebar-item sidebar-filename" id="sidebarFile">
+            <div class="sidebar-label">File</div>
+            <div class="sidebar-value" id="sidebarFileName">-</div>
+        </div>
+    </div>
+</div>
+
+<!-- MAPPING PANEL -->
+<div class="mapping-panel">
+    <div class="mapping-panel-header">
+        <h3>Image Mapping</h3>
+        <button class="toolbar-btn" id="addRowBtn">+ Add Row</button>
+    </div>
+    <div class="mapping-header">
+        <span class="col-action">Action</span>
+        <span class="col-dir">Direction</span>
+        <span class="col-ms">ms/frame</span>
+        <span class="col-figures">Figures</span>
+        <span class="col-btns"></span>
+    </div>
+    <div id="mappingRows"></div>
+</div>
+
+<!-- INSTRUCTIONS -->
+<div class="instructions">
+    <span>Arrow Keys</span> move &nbsp;|&nbsp;
+    <kbd>Home</kbd> ◤ &nbsp;<kbd>PgUp</kbd> ◥ &nbsp;<kbd>End</kbd> ◣ &nbsp;<kbd>PgDn</kbd> ◢ &nbsp;diagonal
+    <br>
+    <kbd>Space</kbd> Attack &nbsp;
+    <kbd>Shift</kbd> Move &nbsp;
+    <kbd>X</kbd> Under Hit &nbsp;
+    <kbd>Z</kbd> Die &nbsp;
+    <kbd>F</kbd> Fly &nbsp;
+    <kbd>C</kbd> Crouch &nbsp;
+    <kbd>V</kbd> Stand &nbsp;
+    <kbd>I</kbd> Idle &nbsp;
+    <kbd>R</kbd> Relive
+    <br><span style="color:#5a6a7a">Hold direction + action key = directional action (e.g. <kbd>←</kbd>+<kbd>Space</kbd> = Attack Left)</span>
+</div>
+
+<script>
+/* ============================
+   CONSTANTS & STATE
+   ============================ */
+const MAX_FIGURES = 10;
+const INITIAL_FIGURES = 2;
+const MAX_GRID_COLS = 30;  // maximum grid width
+const MAX_GRID_ROWS = 12;  // maximum grid height
+const ACTION_OPTIONS = ['attack','move','underHit','die','fly','crouch','stand','idle','relive'];
+const ACTION_LABELS = {
+    attack: 'Attack', move: 'Move', underHit: 'Under Hit',
+    die: 'Die', fly: 'Fly', crouch: 'Crouch', stand: 'Stand', idle: 'Idle', relive: 'Relive'
+};
+const DIR_OPTIONS = ['up','down','left','right'];
+
+// Octagonal grid
+const CELL_SIZE = 40;
+const OCT_CUT = Math.round(CELL_SIZE / (2 + Math.SQRT2)); // regular octagon: all 8 sides equal ~12px
+const SPEED_TO_COOLDOWN = { 2: 280, 4: 180, 6: 110, 8: 70 };
+let gridCols = 0, gridRows = 0, gridOriginX = 0, gridOriginY = 0;
+
+const mappingRows = [];
+
+const character = {
+    x: 0, y: 0,
+    gridCol: 0, gridRow: 0,   // position on octagonal grid
+    moveTimer: 999,            // start high for instant first move
+    currentAction: 'stand',
+    facingDir: 'right',
+    speed: 4,
+    animFrame: 0,
+    animTimer: 0,
+    animPlaying: false,
+    finishCycle: false,  // when true, animation plays through remaining frames then stops
+    activeRowIndex: -1,
+};
+
+const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
+const diagKeys = { upLeft: false, upRight: false, downLeft: false, downRight: false };
+
+function isAnyDirHeld() {
+    return keys.ArrowUp || keys.ArrowDown || keys.ArrowLeft || keys.ArrowRight ||
+           diagKeys.upLeft || diagKeys.upRight || diagKeys.downLeft || diagKeys.downRight;
+}
+
+const heldActionButtons = new Set();
+function isAnyActionHeld() {
+    return heldActionKeys.size > 0 || heldActionButtons.size > 0;
+}
+
+/* ============================
+   DOM REFERENCES
+   ============================ */
+const canvas = document.getElementById('arenaCanvas');
+const ctx = canvas.getContext('2d');
+const gameContainer = document.getElementById('game-container');
+const mappingRowsEl = document.getElementById('mappingRows');
+const sidebarDir = document.getElementById('sidebarDir');
+const sidebarAction = document.getElementById('sidebarAction');
+const speedSelect = document.getElementById('speedSelect');
+
+/* ============================
+   CANVAS INIT & RESIZE
+   ============================ */
+function recalcGrid() {
+    gridCols = MAX_GRID_COLS;
+    gridRows = MAX_GRID_ROWS;
+    gridOriginX = 0;
+    gridOriginY = 0;
+}
+
+function gridToPixel(col, row) {
+    return {
+        x: gridOriginX + col * CELL_SIZE + CELL_SIZE / 2,
+        y: gridOriginY + row * CELL_SIZE + CELL_SIZE / 2
+    };
+}
+
+function sizeCanvas() {
+    const gridW = MAX_GRID_COLS * CELL_SIZE;
+    const gridH = MAX_GRID_ROWS * CELL_SIZE;
+    canvas.width = gridW;
+    canvas.height = gridH;
+    gameContainer.style.width = gridW + 'px';
+    gameContainer.style.height = gridH + 'px';
+    recalcGrid();
+}
+
+function initCanvas() {
+    sizeCanvas();
+    character.gridCol = Math.floor(gridCols / 2);
+    character.gridRow = Math.floor(gridRows / 2);
+    const pos = gridToPixel(character.gridCol, character.gridRow);
+    character.x = pos.x;
+    character.y = pos.y;
+}
+
+/* ============================
+   PIXEL ART DATA STRUCTURE
+   ============================ */
+function detectPixelSize(imageData, w, h) {
+    const data = imageData.data;
+    const getPixel = (x, y) => {
+        const i = (y * w + x) * 4;
+        return [data[i], data[i+1], data[i+2], data[i+3]];
+    };
+    const same = (a, b) => a[0]===b[0] && a[1]===b[1] && a[2]===b[2] && a[3]===b[3];
+
+    // Scan first non-transparent row for run lengths
+    let runs = [];
+    for (let y = 0; y < h; y++) {
+        let foundColor = false;
+        for (let x = 0; x < w; x++) {
+            if (getPixel(x, y)[3] > 10) { foundColor = true; break; }
+        }
+        if (!foundColor) continue;
+
+        let runLen = 1;
+        let prev = getPixel(0, y);
+        for (let x = 1; x < w; x++) {
+            const cur = getPixel(x, y);
+            if (same(cur, prev)) {
+                runLen++;
+            } else {
+                if (runLen > 1) runs.push(runLen);
+                runLen = 1;
+                prev = cur;
+            }
+        }
+        if (runLen > 1) runs.push(runLen);
+        if (runs.length >= 3) break;
+    }
+
+    if (runs.length === 0) return 1;
+
+    // Find GCD of all run lengths as likely pixel size
+    function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
+    let g = runs[0];
+    for (let i = 1; i < runs.length; i++) g = gcd(g, runs[i]);
+
+    // Validate: also check vertical runs
+    let vRuns = [];
+    for (let x = 0; x < Math.min(w, 30); x++) {
+        let runLen = 1;
+        let prev = getPixel(x, 0);
+        for (let y = 1; y < h; y++) {
+            const cur = getPixel(x, y);
+            if (same(cur, prev)) {
+                runLen++;
+            } else {
+                if (runLen > 1) vRuns.push(runLen);
+                runLen = 1;
+                prev = cur;
+            }
+        }
+        if (runLen > 1) vRuns.push(runLen);
+        if (vRuns.length >= 3) break;
+    }
+    if (vRuns.length > 0) {
+        let vg = vRuns[0];
+        for (let i = 1; i < vRuns.length; i++) vg = gcd(vg, vRuns[i]);
+        g = gcd(g, vg);
+    }
+
+    return Math.max(1, Math.min(g, Math.min(w, h)));
+}
+
+function imageToPixelData(cvs) {
+    const w = cvs.width, h = cvs.height;
+    const tempCtx = cvs.getContext('2d');
+    const imageData = tempCtx.getImageData(0, 0, w, h);
+    const data = imageData.data;
+
+    const pixelSize = detectPixelSize(imageData, w, h);
+    const gridW = Math.floor(w / pixelSize);
+    const gridH = Math.floor(h / pixelSize);
+    const pixels = [];
+
+    for (let gy = 0; gy < gridH; gy++) {
+        const row = [];
+        for (let gx = 0; gx < gridW; gx++) {
+            // Sample center of grid cell
+            const sx = Math.floor(gx * pixelSize + pixelSize / 2);
+            const sy = Math.floor(gy * pixelSize + pixelSize / 2);
+            const i = (sy * w + sx) * 4;
+            const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
+            if (a < 128) {
+                row.push(null);
+            } else {
+                row.push('#' + ((1<<24)|(r<<16)|(g<<8)|b).toString(16).slice(1).toUpperCase());
+            }
+        }
+        pixels.push(row);
+    }
+
+    return { width: gridW, height: gridH, pixelSize, pixels };
+}
+
+function pixelDataToCanvas(pixelData) {
+    const { width, height, pixelSize, pixels } = pixelData;
+    const cvs = document.createElement('canvas');
+    cvs.width = width * pixelSize;
+    cvs.height = height * pixelSize;
+    const c = cvs.getContext('2d');
+
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const color = pixels[y] && pixels[y][x];
+            if (color) {
+                c.fillStyle = color;
+                c.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+            }
+        }
+    }
+    return cvs;
+}
+
+/* ============================
+   SPRITE PROCESSING
+   ============================ */
+function processSprite(img) {
+    const maxSize = 512;
+    let w = img.width, h = img.height;
+    if (w > maxSize || h > maxSize) {
+        const scale = maxSize / Math.max(w, h);
+        w = Math.round(w * scale);
+        h = Math.round(h * scale);
+    }
+
+    const cvs = document.createElement('canvas');
+    cvs.width = w;
+    cvs.height = h;
+    const c = cvs.getContext('2d');
+    c.imageSmoothingEnabled = false;
+    c.drawImage(img, 0, 0, w, h);
+
+    return cvs;
+}
+
+/* ============================
+   MAPPING ROWS
+   ============================ */
+function addMappingRow(preset, insertAtEnd, skipRebuild) {
+    const rowData = {
+        action: (preset && preset.action) || 'stand',
+        direction: (preset && preset.direction) || 'right',
+        msPerFrame: (preset && preset.msPerFrame) || 150,
+        frames: new Array(INITIAL_FIGURES).fill(null),
+    };
+    if (insertAtEnd) {
+        mappingRows.push(rowData);
+    } else {
+        mappingRows.unshift(rowData);
+        // Shift activeRowIndex since all existing rows moved down by 1
+        if (character.activeRowIndex >= 0) character.activeRowIndex++;
+    }
+    const rowIndex = insertAtEnd ? mappingRows.length - 1 : 0;
+    if (!skipRebuild) rebuildMappingDOM();
+    return rowIndex;
+}
+
+function createFigureSlot(rowIndex, figureIndex) {
+    const slot = document.createElement('div');
+    slot.className = 'figure-slot';
+    slot.dataset.rowIndex = rowIndex;
+    slot.dataset.figureIndex = figureIndex;
+
+    const placeholder = document.createElement('span');
+    placeholder.className = 'slot-placeholder';
+    placeholder.textContent = '+';
+    slot.appendChild(placeholder);
+
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files[0]) handleImageUpload(rowIndex, figureIndex, e.target.files[0]);
+    });
+    slot.appendChild(fileInput);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'remove-img-btn';
+    removeBtn.textContent = '×';
+    removeBtn.title = 'Remove image';
+    removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        clearFigureSlot(rowIndex, figureIndex);
+    });
+    slot.appendChild(removeBtn);
+
+    slot.addEventListener('click', (e) => {
+        const fi = slot.querySelector('input[type="file"]');
+        if (!fi || e.target === fi) return;
+        fi.click();
+    });
+
+    return slot;
+}
+
+function clearFigureSlot(rowIndex, figureIndex) {
+    if (!mappingRows[rowIndex]) return;
+    mappingRows[rowIndex].frames[figureIndex] = null;
+
+    // If the cleared frame was the active one, reset
+    if (character.activeRowIndex === rowIndex && character.animFrame === figureIndex) {
+        const activeFrames = getActiveFrames(rowIndex);
+        if (activeFrames.length > 0) {
+            character.animFrame = activeFrames[activeFrames.length - 1].index;
+        } else {
+            character.activeRowIndex = -1;
+        }
+        character.animPlaying = false;
+    }
+
+    // Reset slot DOM
+    const slot = mappingRowsEl.querySelector(
+        `.figure-slot[data-row-index="${rowIndex}"][data-figure-index="${figureIndex}"]`
+    );
+    if (slot) {
+        slot.classList.remove('has-image');
+        // Keep only the placeholder, file input, and remove button
+        const fileInput = slot.querySelector('input[type="file"]');
+        const removeBtn = slot.querySelector('.remove-img-btn');
+        slot.innerHTML = '';
+        const placeholder = document.createElement('span');
+        placeholder.className = 'slot-placeholder';
+        placeholder.textContent = '+';
+        slot.appendChild(placeholder);
+        slot.appendChild(fileInput);
+        slot.appendChild(removeBtn);
+    }
+}
+
+function addFigureSlot(rowIndex) {
+    const rowData = mappingRows[rowIndex];
+    if (!rowData || rowData.frames.length >= MAX_FIGURES) return;
+
+    const figureIndex = rowData.frames.length;
+    rowData.frames.push(null);
+
+    const rowEl = mappingRowsEl.querySelector(`[data-row-index="${rowIndex}"]`);
+    if (!rowEl) return;
+    const figureSlots = rowEl.querySelector('.figure-slots');
+    figureSlots.appendChild(createFigureSlot(rowIndex, figureIndex));
+}
+
+function removeFigureSlot(rowIndex) {
+    const rowData = mappingRows[rowIndex];
+    if (!rowData || rowData.frames.length <= 1) return; // Keep at least 1 slot
+
+    const lastIdx = rowData.frames.length - 1;
+
+    // If the removed frame was the active one, reset animation
+    if (character.activeRowIndex === rowIndex && character.animFrame === lastIdx) {
+        const remaining = rowData.frames.slice(0, lastIdx).map((f, i) => ({frame: f, index: i})).filter(item => item.frame !== null);
+        if (remaining.length > 0) {
+            character.animFrame = remaining[remaining.length - 1].index;
+        } else {
+            character.activeRowIndex = -1;
+        }
+        character.animPlaying = false;
+    }
+
+    rowData.frames.pop();
+
+    // Remove last slot DOM element
+    const rowEl = mappingRowsEl.querySelector(`[data-row-index="${rowIndex}"]`);
+    if (!rowEl) return;
+    const figureSlots = rowEl.querySelector('.figure-slots');
+    const lastSlot = figureSlots.querySelector(`.figure-slot[data-figure-index="${lastIdx}"]`);
+    if (lastSlot) figureSlots.removeChild(lastSlot);
+}
+
+function removeMappingRow(rowIndex) {
+    if (mappingRows.length <= 1) return; // Keep at least one row
+
+    // If the active row is being removed, reset
+    if (character.activeRowIndex === rowIndex) {
+        character.activeRowIndex = -1;
+        character.animPlaying = false;
+    } else if (character.activeRowIndex > rowIndex) {
+        character.activeRowIndex--;
+    }
+
+    mappingRows.splice(rowIndex, 1);
+    rebuildMappingDOM();
+}
+
+function rebuildMappingDOM() {
+    mappingRowsEl.innerHTML = '';
+    const saved = mappingRows.map(r => ({...r, frames: [...r.frames]}));
+    mappingRows.length = 0;
+
+    saved.forEach((rowData) => {
+        const ri = mappingRows.length;
+        mappingRows.push(rowData);
+
+        const rowEl = document.createElement('div');
+        rowEl.className = 'mapping-row';
+        rowEl.dataset.rowIndex = ri;
+
+        const actionSel = document.createElement('select');
+        actionSel.className = 'action-select';
+        ACTION_OPTIONS.forEach(a => {
+            const opt = document.createElement('option');
+            opt.value = a;
+            opt.textContent = ACTION_LABELS[a];
+            if (a === rowData.action) opt.selected = true;
+            actionSel.appendChild(opt);
+        });
+        actionSel.addEventListener('change', () => { rowData.action = actionSel.value; });
+
+        const dirSel = document.createElement('select');
+        dirSel.className = 'dir-select';
+        DIR_OPTIONS.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d;
+            opt.textContent = d.charAt(0).toUpperCase() + d.slice(1);
+            if (d === rowData.direction) opt.selected = true;
+            dirSel.appendChild(opt);
+        });
+        dirSel.addEventListener('change', () => { rowData.direction = dirSel.value; });
+
+        const msInput = document.createElement('input');
+        msInput.type = 'number';
+        msInput.className = 'ms-input';
+        msInput.value = rowData.msPerFrame;
+        msInput.min = 16;
+        msInput.max = 5000;
+        msInput.addEventListener('change', () => {
+            rowData.msPerFrame = Math.max(16, parseInt(msInput.value) || 150);
+            msInput.value = rowData.msPerFrame;
+        });
+
+        const figureSlots = document.createElement('div');
+        figureSlots.className = 'figure-slots';
+        rowData.frames.forEach((frame, fi) => {
+            const slot = createFigureSlot(ri, fi);
+            if (frame && frame.canvas) {
+                populateSlotWithImage(slot, frame.canvas.toDataURL(), ri, fi);
+            }
+            figureSlots.appendChild(slot);
+        });
+
+        const rowBtns = document.createElement('div');
+        rowBtns.className = 'row-btns';
+        const addFigBtn = document.createElement('button');
+        addFigBtn.className = 'add-figure-btn';
+        addFigBtn.textContent = '+';
+        addFigBtn.title = 'Add figure slot (max 10)';
+        addFigBtn.addEventListener('click', () => addFigureSlot(ri));
+        const removeFigBtn = document.createElement('button');
+        removeFigBtn.className = 'remove-figure-btn';
+        removeFigBtn.textContent = '-';
+        removeFigBtn.title = 'Remove last figure slot';
+        removeFigBtn.addEventListener('click', () => removeFigureSlot(ri));
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-row-btn';
+        removeBtn.textContent = '×';
+        removeBtn.title = 'Remove this row';
+        removeBtn.addEventListener('click', () => removeMappingRow(ri));
+        rowBtns.appendChild(addFigBtn);
+        rowBtns.appendChild(removeFigBtn);
+        rowBtns.appendChild(removeBtn);
+
+        rowEl.appendChild(actionSel);
+        rowEl.appendChild(dirSel);
+        rowEl.appendChild(msInput);
+        rowEl.appendChild(figureSlots);
+        rowEl.appendChild(rowBtns);
+        mappingRowsEl.appendChild(rowEl);
+    });
+}
+
+function populateSlotWithImage(slot, imgSrc, rowIndex, figureIndex) {
+    const thumb = document.createElement('img');
+    thumb.src = imgSrc;
+    slot.innerHTML = '';
+    slot.appendChild(thumb);
+
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.addEventListener('change', (ev) => {
+        if (ev.target.files[0]) handleImageUpload(rowIndex, figureIndex, ev.target.files[0]);
+    });
+    slot.appendChild(fileInput);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'remove-img-btn';
+    removeBtn.textContent = '×';
+    removeBtn.title = 'Remove image';
+    removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        clearFigureSlot(rowIndex, figureIndex);
+    });
+    slot.appendChild(removeBtn);
+
+    slot.classList.add('has-image');
+}
+
+function handleImageUpload(rowIndex, figureIndex, file) {
+    if (!file.type.startsWith('image/')) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+            const cvs = processSprite(img);
+            const pixelData = imageToPixelData(cvs);
+            mappingRows[rowIndex].frames[figureIndex] = { canvas: cvs, pixelData };
+
+            // Update thumbnail
+            const slot = mappingRowsEl.querySelector(
+                `.figure-slot[data-row-index="${rowIndex}"][data-figure-index="${figureIndex}"]`
+            );
+            if (slot) {
+                populateSlotWithImage(slot, cvs.toDataURL(), rowIndex, figureIndex);
+            }
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function buildMappingPanel() {
+    ACTION_OPTIONS.forEach(action => {
+        addMappingRow({ action, direction: 'right', msPerFrame: 150 }, true, true);
+    });
+    rebuildMappingDOM();
+}
+
+/* ============================
+   ROW LOOKUP
+   ============================ */
+function findRow(action, direction) {
+    // Exact match first
+    let idx = mappingRows.findIndex(r => r.action === action && r.direction === direction);
+    if (idx !== -1) return idx;
+    // Fallback: any direction for this action
+    idx = mappingRows.findIndex(r => r.action === action);
+    return idx;
+}
+
+function getActiveFrames(rowIndex) {
+    if (rowIndex < 0 || rowIndex >= mappingRows.length) return [];
+    return mappingRows[rowIndex].frames
+        .map((f, i) => ({ frame: f, index: i }))
+        .filter(item => item.frame !== null);
+}
+
+/* ============================
+   ACTION TRIGGER
+   ============================ */
+function triggerAction(name) {
+    character.currentAction = name;
+    character.finishCycle = false;  // reset finish flag on new action
+    const rowIdx = findRow(name, character.facingDir);
+    if (rowIdx === -1) {
+        character.activeRowIndex = -1;
+        character.animPlaying = false;
+        return;
+    }
+
+    const activeFrames = getActiveFrames(rowIdx);
+    character.activeRowIndex = rowIdx;
+    character.animTimer = 0;
+
+    if (activeFrames.length > 0) {
+        character.animFrame = activeFrames[0].index;
+        character.animPlaying = activeFrames.length > 1;
+    } else {
+        character.animFrame = 0;
+        character.animPlaying = false;
+    }
+}
+
+/* ============================
+   HIGHLIGHT ACTIVE SLOT
+   ============================ */
+function highlightActiveSlot() {
+    // Clear all highlights
+    document.querySelectorAll('.figure-slot.active-frame').forEach(el => el.classList.remove('active-frame'));
+    document.querySelectorAll('.mapping-row.active-row').forEach(el => el.classList.remove('active-row'));
+
+    if (character.activeRowIndex < 0) return;
+
+    const rowEl = mappingRowsEl.querySelector(`[data-row-index="${character.activeRowIndex}"]`);
+    if (rowEl) rowEl.classList.add('active-row');
+
+    const slot = mappingRowsEl.querySelector(
+        `.figure-slot[data-row-index="${character.activeRowIndex}"][data-figure-index="${character.animFrame}"]`
+    );
+    if (slot) slot.classList.add('active-frame');
+}
+
+/* ============================
+   CONTROLS SETUP
+   ============================ */
+const arrowToDirMap = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
+
+function setupDirButton(btn, arrowKey) {
+    const press = () => {
+        keys[arrowKey] = true;
+        btn.classList.add('pressed');
+        character.facingDir = arrowToDirMap[arrowKey];
+        triggerAction(getHeldActionKey() || character.currentAction);
+    };
+    const release = () => {
+        keys[arrowKey] = false;
+        btn.classList.remove('pressed');
+        if (character.animPlaying && !isAnyDirHeld() && !isAnyActionHeld()) {
+            character.finishCycle = true;
+        }
+    };
+
+    btn.addEventListener('mousedown', press);
+    btn.addEventListener('mouseup', release);
+    btn.addEventListener('mouseleave', release);
+    btn.addEventListener('touchstart', (e) => { e.preventDefault(); press(); });
+    btn.addEventListener('touchend', (e) => { e.preventDefault(); release(); });
+}
+
+function setupActionButton(btn, actionName) {
+    const press = () => {
+        btn.classList.add('pressed');
+        heldActionButtons.add(actionName);
+        triggerAction(actionName);
+    };
+    const release = () => {
+        btn.classList.remove('pressed');
+        heldActionButtons.delete(actionName);
+        if (character.animPlaying && !isAnyActionHeld() && !isAnyDirHeld()) {
+            character.finishCycle = true;
+        }
+    };
+
+    btn.addEventListener('mousedown', press);
+    btn.addEventListener('mouseup', release);
+    btn.addEventListener('mouseleave', release);
+    btn.addEventListener('touchstart', (e) => { e.preventDefault(); press(); });
+    btn.addEventListener('touchend', (e) => { e.preventDefault(); release(); });
+}
+
+setupDirButton(document.getElementById('btnUp'), 'ArrowUp');
+setupDirButton(document.getElementById('btnDown'), 'ArrowDown');
+setupDirButton(document.getElementById('btnLeft'), 'ArrowLeft');
+setupDirButton(document.getElementById('btnRight'), 'ArrowRight');
+
+// Diagonal direction buttons
+function setupDiagButton(btn, diagKey, facingDir) {
+    const press = () => {
+        diagKeys[diagKey] = true;
+        btn.classList.add('pressed');
+        character.facingDir = facingDir;
+        triggerAction(getHeldActionKey() || character.currentAction);
+    };
+    const release = () => {
+        diagKeys[diagKey] = false;
+        btn.classList.remove('pressed');
+        if (character.animPlaying && !isAnyDirHeld() && !isAnyActionHeld()) {
+            character.finishCycle = true;
+        }
+    };
+    btn.addEventListener('mousedown', press);
+    btn.addEventListener('mouseup', release);
+    btn.addEventListener('mouseleave', release);
+    btn.addEventListener('touchstart', (e) => { e.preventDefault(); press(); });
+    btn.addEventListener('touchend', (e) => { e.preventDefault(); release(); });
+}
+
+setupDiagButton(document.getElementById('btnUpLeft'), 'upLeft', 'left');
+setupDiagButton(document.getElementById('btnUpRight'), 'upRight', 'right');
+setupDiagButton(document.getElementById('btnDownLeft'), 'downLeft', 'left');
+setupDiagButton(document.getElementById('btnDownRight'), 'downRight', 'right');
+
+setupActionButton(document.getElementById('btnAttack'), 'attack');
+setupActionButton(document.getElementById('btnMove'), 'move');
+setupActionButton(document.getElementById('btnUnderHit'), 'underHit');
+setupActionButton(document.getElementById('btnDie'), 'die');
+setupActionButton(document.getElementById('btnFly'), 'fly');
+setupActionButton(document.getElementById('btnCrouch'), 'crouch');
+setupActionButton(document.getElementById('btnStand'), 'stand');
+setupActionButton(document.getElementById('btnIdle'), 'idle');
+setupActionButton(document.getElementById('btnRelive'), 'relive');
+
+speedSelect.addEventListener('change', () => {
+    character.speed = parseInt(speedSelect.value);
+});
+
+/* ============================
+   KEYBOARD
+   ============================ */
+const keyActionMap = {
+    ' ': 'attack',
+    'Shift': 'move',
+    'x': 'underHit', 'X': 'underHit',
+    'z': 'die', 'Z': 'die',
+    'f': 'fly', 'F': 'fly',
+    'c': 'crouch', 'C': 'crouch',
+    'v': 'stand', 'V': 'stand',
+    'i': 'idle', 'I': 'idle',
+    'r': 'relive', 'R': 'relive',
+};
+
+// Track which action keys are currently held
+const heldActionKeys = new Set();
+
+function getHeldActionKey() {
+    for (const key of heldActionKeys) {
+        if (keyActionMap[key]) return keyActionMap[key];
+    }
+    return null;
+}
+
+// Diagonal keyboard mapping: key -> { diagKey, facingDir, btnId }
+const diagKeyMap = {
+    'Home': { diagKey: 'upLeft', facingDir: 'left', btnId: 'btnUpLeft' },
+    'PageUp': { diagKey: 'upRight', facingDir: 'right', btnId: 'btnUpRight' },
+    'End': { diagKey: 'downLeft', facingDir: 'left', btnId: 'btnDownLeft' },
+    'PageDown': { diagKey: 'downRight', facingDir: 'right', btnId: 'btnDownRight' },
+};
+
+document.addEventListener('keydown', (e) => {
+    if (e.repeat) return;
+
+    if (keys.hasOwnProperty(e.key)) {
+        e.preventDefault();
+        keys[e.key] = true;
+        const btnMap = { ArrowUp: 'btnUp', ArrowDown: 'btnDown', ArrowLeft: 'btnLeft', ArrowRight: 'btnRight' };
+        document.getElementById(btnMap[e.key])?.classList.add('pressed');
+
+        // Update facing direction
+        character.facingDir = arrowToDirMap[e.key];
+
+        // Re-trigger current action with new direction
+        triggerAction(getHeldActionKey() || character.currentAction);
+        return;
+    }
+
+    // Diagonal keyboard shortcuts (Home/PgUp/End/PgDn)
+    if (diagKeyMap[e.key]) {
+        e.preventDefault();
+        const { diagKey, facingDir, btnId } = diagKeyMap[e.key];
+        diagKeys[diagKey] = true;
+        document.getElementById(btnId)?.classList.add('pressed');
+        character.facingDir = facingDir;
+        triggerAction(getHeldActionKey() || character.currentAction);
+        return;
+    }
+
+    const action = keyActionMap[e.key];
+    if (action) {
+        e.preventDefault();
+        heldActionKeys.add(e.key);
+        triggerAction(action);
+        const btnIdMap = {
+            attack: 'btnAttack', move: 'btnMove', underHit: 'btnUnderHit',
+            die: 'btnDie', fly: 'btnFly', crouch: 'btnCrouch', stand: 'btnStand', idle: 'btnIdle', relive: 'btnRelive'
+        };
+        document.getElementById(btnIdMap[action])?.classList.add('pressed');
+    }
+});
+
+document.addEventListener('keyup', (e) => {
+    if (keys.hasOwnProperty(e.key)) {
+        keys[e.key] = false;
+        const btnMap = { ArrowUp: 'btnUp', ArrowDown: 'btnDown', ArrowLeft: 'btnLeft', ArrowRight: 'btnRight' };
+        document.getElementById(btnMap[e.key])?.classList.remove('pressed');
+
+        // Update facingDir to another held arrow if any
+        for (const [arrow, dir] of Object.entries(arrowToDirMap)) {
+            if (keys[arrow]) { character.facingDir = dir; break; }
+        }
+
+        // If animation is playing, let it finish the current cycle when all keys released
+        if (character.animPlaying && !isAnyDirHeld() && !isAnyActionHeld()) {
+            character.finishCycle = true;
+        }
+        return;
+    }
+
+    // Diagonal keyboard release
+    if (diagKeyMap[e.key]) {
+        const { diagKey, btnId } = diagKeyMap[e.key];
+        diagKeys[diagKey] = false;
+        document.getElementById(btnId)?.classList.remove('pressed');
+        if (character.animPlaying && !isAnyDirHeld() && !isAnyActionHeld()) {
+            character.finishCycle = true;
+        }
+        return;
+    }
+
+    heldActionKeys.delete(e.key);
+    // Also delete case variants
+    if (e.key.length === 1) {
+        heldActionKeys.delete(e.key.toLowerCase());
+        heldActionKeys.delete(e.key.toUpperCase());
+    }
+
+    const action = keyActionMap[e.key];
+    if (action) {
+        const btnIdMap = {
+            attack: 'btnAttack', move: 'btnMove', underHit: 'btnUnderHit',
+            die: 'btnDie', fly: 'btnFly', crouch: 'btnCrouch', stand: 'btnStand', idle: 'btnIdle', relive: 'btnRelive'
+        };
+        document.getElementById(btnIdMap[action])?.classList.remove('pressed');
+        if (character.animPlaying && !isAnyActionHeld() && !isAnyDirHeld()) {
+            character.finishCycle = true;
+        }
+    }
+});
+
+/* ============================
+   FOCUS LOSS - RESET STALE KEYS
+   ============================ */
+window.addEventListener('blur', () => {
+    Object.keys(keys).forEach(k => keys[k] = false);
+    Object.keys(diagKeys).forEach(k => diagKeys[k] = false);
+    heldActionKeys.clear();
+    heldActionButtons.clear();
+    document.querySelectorAll('.pressed').forEach(el => el.classList.remove('pressed'));
+    if (character.animPlaying) {
+        character.finishCycle = true;
+    }
+});
+
+/* ============================
+   SAVE / LOAD JSON
+   ============================ */
+async function saveToJSON() {
+    const jsonData = {
+        version: 2,
+        rows: mappingRows.map(row => ({
+            action: row.action,
+            direction: row.direction,
+            msPerFrame: row.msPerFrame,
+            frames: row.frames.map(f => {
+                if (!f) return null;
+                return {
+                    image: f.canvas.toDataURL('image/png'),
+                    pixelData: f.pixelData || null,
+                };
+            }),
+        })),
+    };
+
+    const jsonString = JSON.stringify(jsonData, null, 2);
+
+    // Use File System Access API if available (Chrome/Edge) to capture actual filename
+    if (window.showSaveFilePicker) {
+        try {
+            const handle = await window.showSaveFilePicker({
+                suggestedName: 'role_config.json',
+                types: [{ description: 'JSON Files', accept: { 'application/json': ['.json'] } }],
+            });
+            const writable = await handle.createWritable();
+            await writable.write(jsonString);
+            await writable.close();
+            document.getElementById('sidebarFileName').textContent = handle.name;
+            return;
+        } catch (err) {
+            if (err.name === 'AbortError') return; // user cancelled
+            // Fall through to legacy approach
+        }
+    }
+
+    // Legacy fallback (Firefox/Safari)
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'role_config.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    document.getElementById('sidebarFileName').textContent = 'role_config.json';
+}
+
+function loadFromJSON(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const jsonData = JSON.parse(e.target.result);
+            if (!jsonData.rows || !Array.isArray(jsonData.rows)) {
+                alert('Invalid JSON: missing rows array');
+                return;
+            }
+
+            // Clear existing
+            mappingRows.length = 0;
+            mappingRowsEl.innerHTML = '';
+            character.activeRowIndex = -1;
+            character.animPlaying = false;
+
+            // Rebuild data (skip DOM rebuild per row)
+            jsonData.rows.forEach(rowJson => {
+                const ri = addMappingRow({
+                    action: rowJson.action,
+                    direction: rowJson.direction,
+                    msPerFrame: rowJson.msPerFrame,
+                }, true, true);
+
+                // Extend frames array directly in data
+                const rowData = mappingRows[ri];
+                while (rowData.frames.length < rowJson.frames.length) {
+                    rowData.frames.push(null);
+                }
+            });
+
+            // Single DOM rebuild after all rows added
+            rebuildMappingDOM();
+
+            // Load frame images asynchronously
+            jsonData.rows.forEach((rowJson, ri) => {
+                const rowData = mappingRows[ri];
+                rowJson.frames.forEach((frameJson, fi) => {
+                    if (!frameJson) return;
+
+                    const imgSrc = frameJson.image;
+                    if (!imgSrc) return;
+
+                    const img = new Image();
+                    img.onload = () => {
+                        const cvs = document.createElement('canvas');
+                        cvs.width = img.width;
+                        cvs.height = img.height;
+                        const c = cvs.getContext('2d');
+                        c.imageSmoothingEnabled = false;
+                        c.drawImage(img, 0, 0);
+
+                        rowData.frames[fi] = {
+                            canvas: cvs,
+                            pixelData: frameJson.pixelData || imageToPixelData(cvs),
+                        };
+
+                        // Update thumbnail
+                        const slot = mappingRowsEl.querySelector(
+                            `.figure-slot[data-row-index="${ri}"][data-figure-index="${fi}"]`
+                        );
+                        if (slot) {
+                            populateSlotWithImage(slot, imgSrc, ri, fi);
+                        }
+                    };
+                    img.src = imgSrc;
+                });
+            });
+        } catch (err) {
+            alert('Error loading JSON: ' + err.message);
+        }
+    };
+    reader.readAsText(file);
+}
+
+document.getElementById('saveBtn').addEventListener('click', saveToJSON);
+document.getElementById('loadBtn').addEventListener('click', () => {
+    document.getElementById('loadFileInput').click();
+});
+document.getElementById('loadFileInput').addEventListener('change', (e) => {
+    if (e.target.files[0]) {
+        document.getElementById('sidebarFileName').textContent = e.target.files[0].name;
+        loadFromJSON(e.target.files[0]);
+        e.target.value = ''; // Reset so same file can be loaded again
+    }
+});
+document.getElementById('addRowBtn').addEventListener('click', () => addMappingRow());
+
+/* ============================
+   GAME LOOP
+   ============================ */
+function drawFloor() {
+    const S = CELL_SIZE;
+    const c = OCT_CUT;
+    const gc = character.gridCol;
+    const gr = character.gridRow;
+
+    // Fill entire grid area so no gaps/holes are visible between octagons
+    ctx.fillStyle = 'rgba(52,73,94,0.06)';
+    ctx.fillRect(gridOriginX, gridOriginY, gridCols * S, gridRows * S);
+
+    // Highlight character's cell: octagon body + 4 corner triangles
+    // Each corner triangle extends the highlight into the diamond gap,
+    // showing that every diagonal edge connects to the adjacent octagon's territory
+    const hx = gridOriginX + gc * S;
+    const hy = gridOriginY + gr * S;
+    ctx.fillStyle = 'rgba(230,126,34,0.12)';
+
+    // Octagon body
+    ctx.beginPath();
+    ctx.moveTo(hx + c, hy);
+    ctx.lineTo(hx + S - c, hy);
+    ctx.lineTo(hx + S, hy + c);
+    ctx.lineTo(hx + S, hy + S - c);
+    ctx.lineTo(hx + S - c, hy + S);
+    ctx.lineTo(hx + c, hy + S);
+    ctx.lineTo(hx, hy + S - c);
+    ctx.lineTo(hx, hy + c);
+    ctx.closePath();
+    ctx.fill();
+
+    // Top-left corner triangle (diagonal edge → diamond gap center)
+    if (gc > 0 && gr > 0) {
+        ctx.beginPath();
+        ctx.moveTo(hx + c, hy);
+        ctx.lineTo(hx, hy + c);
+        ctx.lineTo(hx, hy);
+        ctx.closePath();
+        ctx.fill();
+    }
+    // Top-right corner triangle
+    if (gc < gridCols - 1 && gr > 0) {
+        ctx.beginPath();
+        ctx.moveTo(hx + S - c, hy);
+        ctx.lineTo(hx + S, hy + c);
+        ctx.lineTo(hx + S, hy);
+        ctx.closePath();
+        ctx.fill();
+    }
+    // Bottom-right corner triangle
+    if (gc < gridCols - 1 && gr < gridRows - 1) {
+        ctx.beginPath();
+        ctx.moveTo(hx + S, hy + S - c);
+        ctx.lineTo(hx + S - c, hy + S);
+        ctx.lineTo(hx + S, hy + S);
+        ctx.closePath();
+        ctx.fill();
+    }
+    // Bottom-left corner triangle
+    if (gc > 0 && gr < gridRows - 1) {
+        ctx.beginPath();
+        ctx.moveTo(hx + c, hy + S);
+        ctx.lineTo(hx, hy + S - c);
+        ctx.lineTo(hx, hy + S);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    // Draw all octagon outlines
+    ctx.strokeStyle = 'rgba(52,73,94,0.4)';
+    ctx.lineWidth = 1;
+    for (let row = 0; row < gridRows; row++) {
+        for (let col = 0; col < gridCols; col++) {
+            const x = gridOriginX + col * S;
+            const y = gridOriginY + row * S;
+            ctx.beginPath();
+            ctx.moveTo(x + c, y);
+            ctx.lineTo(x + S - c, y);
+            ctx.lineTo(x + S, y + c);
+            ctx.lineTo(x + S, y + S - c);
+            ctx.lineTo(x + S - c, y + S);
+            ctx.lineTo(x + c, y + S);
+            ctx.lineTo(x, y + S - c);
+            ctx.lineTo(x, y + c);
+            ctx.closePath();
+            ctx.stroke();
+        }
+    }
+
+    // Draw cross-lines at every intersection to divide diamond gaps into triangles
+    // Each cross-line connects two adjacent octagons' diagonal edges through the gap center
+    for (let row = 0; row < gridRows - 1; row++) {
+        for (let col = 0; col < gridCols - 1; col++) {
+            const ix = gridOriginX + (col + 1) * S;
+            const iy = gridOriginY + (row + 1) * S;
+            ctx.beginPath();
+            ctx.moveTo(ix - c, iy);
+            ctx.lineTo(ix + c, iy);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(ix, iy - c);
+            ctx.lineTo(ix, iy + c);
+            ctx.stroke();
+        }
+    }
+}
+
+function update(dt) {
+    // Grid-based movement (8 directions: cardinal + diagonal via arrows or diag keys)
+    let dx = 0, dy = 0;
+    if (keys.ArrowLeft || diagKeys.upLeft || diagKeys.downLeft) dx -= 1;
+    if (keys.ArrowRight || diagKeys.upRight || diagKeys.downRight) dx += 1;
+    if (keys.ArrowUp || diagKeys.upLeft || diagKeys.upRight) dy -= 1;
+    if (keys.ArrowDown || diagKeys.downLeft || diagKeys.downRight) dy += 1;
+
+    if (dx !== 0 || dy !== 0) {
+        const cooldown = SPEED_TO_COOLDOWN[character.speed] || 180;
+        character.moveTimer += dt;
+        if (character.moveTimer >= cooldown) {
+            character.moveTimer = 0;
+            const newCol = Math.max(0, Math.min(gridCols - 1, character.gridCol + dx));
+            const newRow = Math.max(0, Math.min(gridRows - 1, character.gridRow + dy));
+            character.gridCol = newCol;
+            character.gridRow = newRow;
+        }
+    } else {
+        character.moveTimer = 999; // instant move on next key press
+    }
+
+    // Smooth interpolation toward grid cell center
+    const target = gridToPixel(character.gridCol, character.gridRow);
+    character.x += (target.x - character.x) * 0.2;
+    character.y += (target.y - character.y) * 0.2;
+    if (Math.abs(target.x - character.x) < 0.5) character.x = target.x;
+    if (Math.abs(target.y - character.y) < 0.5) character.y = target.y;
+
+    // Update sidebar (MUST run every frame, never skip)
+    sidebarDir.textContent = character.facingDir;
+    sidebarAction.textContent = ACTION_LABELS[character.currentAction] || character.currentAction;
+
+    // Animation
+    if (character.animPlaying && character.activeRowIndex >= 0) {
+        const row = mappingRows[character.activeRowIndex];
+        if (!row) { character.animPlaying = false; return; }
+
+        character.animTimer += dt;
+        if (character.animTimer >= row.msPerFrame) {
+            character.animTimer -= row.msPerFrame;
+
+            const activeFrames = getActiveFrames(character.activeRowIndex);
+            if (activeFrames.length === 0) {
+                character.animPlaying = false;
+                return;
+            }
+
+            // Find current position in active frames
+            const curIdx = activeFrames.findIndex(af => af.index === character.animFrame);
+            const nextIdx = curIdx + 1;
+
+            if (nextIdx >= activeFrames.length) {
+                // Reached last frame
+                if ((isAnyDirHeld() || isAnyActionHeld()) && !character.finishCycle) {
+                    // Loop back to first frame while any key held
+                    character.animFrame = activeFrames[0].index;
+                } else {
+                    // Hold on last frame (all frames played through)
+                    character.animFrame = activeFrames[activeFrames.length - 1].index;
+                    character.animPlaying = false;
+                    character.finishCycle = false;
+                }
+            } else {
+                character.animFrame = activeFrames[nextIdx].index;
+            }
+        }
+    }
+}
+
+function render() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawFloor();
+
+    // Get current frame to draw
+    let frameData = null;
+    if (character.activeRowIndex >= 0 && character.activeRowIndex < mappingRows.length) {
+        const row = mappingRows[character.activeRowIndex];
+        if (row && row.frames[character.animFrame]) {
+            frameData = row.frames[character.animFrame];
+        }
+    }
+
+    const cx = character.x;
+    const cy = character.y;
+
+    // Direction arrow indicator (triangle pointing in facing direction)
+    ctx.fillStyle = 'rgba(230,126,34,0.6)';
+    const arrowDist = 35;
+    const arrowLen = 10;
+    const arrowWidth = 7;
+    let ax = cx, ay = cy;
+    switch (character.facingDir) {
+        case 'up':    ay -= arrowDist; break;
+        case 'down':  ay += arrowDist; break;
+        case 'left':  ax -= arrowDist; break;
+        case 'right': ax += arrowDist; break;
+    }
+    ctx.beginPath();
+    switch (character.facingDir) {
+        case 'up':
+            ctx.moveTo(ax, ay - arrowLen);
+            ctx.lineTo(ax - arrowWidth, ay + arrowLen);
+            ctx.lineTo(ax + arrowWidth, ay + arrowLen);
+            break;
+        case 'down':
+            ctx.moveTo(ax, ay + arrowLen);
+            ctx.lineTo(ax - arrowWidth, ay - arrowLen);
+            ctx.lineTo(ax + arrowWidth, ay - arrowLen);
+            break;
+        case 'left':
+            ctx.moveTo(ax - arrowLen, ay);
+            ctx.lineTo(ax + arrowLen, ay - arrowWidth);
+            ctx.lineTo(ax + arrowLen, ay + arrowWidth);
+            break;
+        case 'right':
+            ctx.moveTo(ax + arrowLen, ay);
+            ctx.lineTo(ax - arrowLen, ay - arrowWidth);
+            ctx.lineTo(ax - arrowLen, ay + arrowWidth);
+            break;
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    // Draw shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 40, 30, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (frameData && frameData.canvas) {
+        const sprite = frameData.canvas;
+        const drawH = 80;
+        const drawW = (sprite.width / sprite.height) * drawH;
+
+        // Flip horizontally when facingDir and the row's direction disagree on left/right
+        // Row direction = which way the uploaded image naturally faces
+        // XOR: flip only when one is 'left' and the other isn't
+        const row = (character.activeRowIndex >= 0) ? mappingRows[character.activeRowIndex] : null;
+        const rowDir = row ? row.direction : 'right';
+        const needFlip = (character.facingDir === 'left') !== (rowDir === 'left');
+
+        ctx.save();
+        if (needFlip) {
+            ctx.translate(cx, cy);
+            ctx.scale(-1, 1);
+            ctx.drawImage(sprite, -drawW / 2, -drawH / 2, drawW, drawH);
+        } else {
+            ctx.drawImage(sprite, cx - drawW / 2, cy - drawH / 2, drawW, drawH);
+        }
+        ctx.restore();
+    } else {
+        // Placeholder with direction indicator
+        ctx.fillStyle = 'rgba(230,126,34,0.3)';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 25, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw a small direction triangle inside the placeholder
+        ctx.fillStyle = 'rgba(230,126,34,0.5)';
+        const pd = 18; // distance from center
+        const ps = 6;  // triangle size
+        ctx.beginPath();
+        if (character.facingDir === 'left') {
+            ctx.moveTo(cx - pd, cy);
+            ctx.lineTo(cx - pd + ps * 2, cy - ps);
+            ctx.lineTo(cx - pd + ps * 2, cy + ps);
+        } else if (character.facingDir === 'right') {
+            ctx.moveTo(cx + pd, cy);
+            ctx.lineTo(cx + pd - ps * 2, cy - ps);
+            ctx.lineTo(cx + pd - ps * 2, cy + ps);
+        } else if (character.facingDir === 'up') {
+            ctx.moveTo(cx, cy - pd);
+            ctx.lineTo(cx - ps, cy - pd + ps * 2);
+            ctx.lineTo(cx + ps, cy - pd + ps * 2);
+        } else {
+            ctx.moveTo(cx, cy + pd);
+            ctx.lineTo(cx - ps, cy + pd - ps * 2);
+            ctx.lineTo(cx + ps, cy + pd - ps * 2);
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#e67e22';
+        ctx.font = '11px "Segoe UI", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const label = ACTION_LABELS[character.currentAction] || 'No Image';
+        ctx.fillText(label, cx, cy);
+    }
+
+    highlightActiveSlot();
+}
+
+let lastTimestamp = 0;
+function gameLoop(timestamp) {
+    const dt = lastTimestamp ? (timestamp - lastTimestamp) : 16;
+    lastTimestamp = timestamp;
+
+    update(dt);
+    render();
+
+    requestAnimationFrame(gameLoop);
+}
+
+/* ============================
+   INIT
+   ============================ */
+initCanvas();
+buildMappingPanel();
+triggerAction('stand');
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>

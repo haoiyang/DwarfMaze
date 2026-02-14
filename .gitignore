@@ -59,3 +59,12 @@ dmypy.json
 
 # Logs
 *.log
+
+# Claude Code local plans
+.claude/
+
+# Large asset files/directories
+Role/
+Tiny Swords*/
+*.zip
+*.pen
